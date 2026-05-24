@@ -264,6 +264,9 @@ export default function App() {
   const [savingKeys, setSavingKeys] = useState(false);
   const [keysSaved, setKeysSaved] = useState(false);
   const [hasClaudeKey, setHasClaudeKey] = useState(false);
+  const [hasElevenLabsKey, setHasElevenLabsKey] = useState(false);
+  const [claudeKeyStatus, setClaudeKeyStatus] = useState<{ ok: boolean; error?: string } | null>(null);
+  const [elevenKeyStatus, setElevenKeyStatus] = useState<{ ok: boolean; error?: string } | null>(null);
 
   // New file form
   const [newType, setNewType] = useState('hesped');
@@ -309,7 +312,7 @@ export default function App() {
   useEffect(() => {
     if (authed) {
       fetch('/api/settings').then(r => r.ok ? r.json() : null).then(d => {
-        if (d) { setHasClaudeKey(!!d.hasClaudeKey); if (d.name) setUserName(d.name); }
+        if (d) { setHasClaudeKey(!!d.hasClaudeKey); setHasElevenLabsKey(!!d.hasElevenLabsKey); if (d.name) setUserName(d.name); }
       }).catch(() => {});
     }
   }, [authed]);
@@ -506,19 +509,28 @@ export default function App() {
   };
 
   const handleSaveKeys = async () => {
-    setSavingKeys(true);
+    setSavingKeys(true); setClaudeKeyStatus(null); setElevenKeyStatus(null);
     try {
       const body: Record<string, string> = {};
       if (claudeKey) body.claudeApiKey = claudeKey;
       if (elevenKey) body.elevenlabsApiKey = elevenKey;
-      await fetch('/api/settings', {
+      const res = await fetch('/api/settings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      const data = await res.json();
+      if (data.keyResults?.claude) {
+        setClaudeKeyStatus(data.keyResults.claude);
+        setHasClaudeKey(data.keyResults.claude.ok);
+      }
+      if (data.keyResults?.elevenlabs) {
+        setElevenKeyStatus(data.keyResults.elevenlabs);
+        setHasElevenLabsKey(data.keyResults.elevenlabs.ok);
+      }
       setKeysSaved(true);
-      setHasClaudeKey(!!claudeKey || hasClaudeKey);
-      setTimeout(() => setKeysSaved(false), 2000);
-      setClaudeKey(''); setElevenKey('');
+      setTimeout(() => setKeysSaved(false), 3000);
+      if (data.keyResults?.claude?.ok) setClaudeKey('');
+      if (data.keyResults?.elevenlabs?.ok) setElevenKey('');
     } catch {} finally { setSavingKeys(false); }
   };
 
@@ -1966,8 +1978,9 @@ export default function App() {
                       <input className="input" type="password" value={claudeKey}
                         onChange={e => setClaudeKey(e.target.value)}
                         placeholder={hasClaudeKey ? '••••••••••••••••' : 'sk-ant-...'} />
-                      <span className={`key-status ${hasClaudeKey ? 'connected' : 'empty'}`}>
-                        {hasClaudeKey ? '● Connected' : '○ Not set'}
+                      <span className={`key-status ${hasClaudeKey ? 'connected' : 'empty'}`}
+                        style={claudeKeyStatus && !claudeKeyStatus.ok ? { background: 'rgba(220,38,38,0.08)', color: 'var(--accent)' } : undefined}>
+                        {claudeKeyStatus ? (claudeKeyStatus.ok ? '● Connected' : `● ${claudeKeyStatus.error}`) : hasClaudeKey ? '● Connected' : '○ Not set'}
                       </span>
                     </div>
                   </div>
@@ -1984,12 +1997,16 @@ export default function App() {
                     <div className="key-input" style={{ marginTop: 8 }}>
                       <input className="input" type="password" value={elevenKey}
                         onChange={e => setElevenKey(e.target.value)}
-                        placeholder="xi-..." />
+                        placeholder={hasElevenLabsKey ? '••••••••••••••••' : 'xi-...'} />
+                      <span className={`key-status ${hasElevenLabsKey ? 'connected' : 'empty'}`}
+                        style={elevenKeyStatus && !elevenKeyStatus.ok ? { background: 'rgba(220,38,38,0.08)', color: 'var(--accent)' } : undefined}>
+                        {elevenKeyStatus ? (elevenKeyStatus.ok ? '● Connected' : `● ${elevenKeyStatus.error}`) : hasElevenLabsKey ? '● Connected' : '○ Not set'}
+                      </span>
                     </div>
                   </div>
                   <div style={{ marginTop: 14 }}>
                     <button className="btn primary" onClick={handleSaveKeys} disabled={savingKeys || (!claudeKey && !elevenKey)}>
-                      {keysSaved ? '✓ Saved' : savingKeys ? 'Saving...' : 'Save Keys'}
+                      {keysSaved ? '✓ Saved & Tested' : savingKeys ? 'Testing...' : 'Save & Test Keys'}
                     </button>
                   </div>
                   <div className="privacy-vow" style={{ marginTop: 14 }}>
