@@ -4,15 +4,14 @@
 
 import { NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
-import { getRedis } from '@/lib/kv';
+import { getUserElevenLabsKey } from '@/lib/kv';
 
 export async function GET() {
   try {
     const session = await getSessionFromCookies();
     if (!session.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const apiKey = await getRedis().get(`user:${session.userId}:elevenlabs-key`)
-      .catch(() => null) || process.env.ELEVENLABS_API_KEY;
+    const apiKey = await getUserElevenLabsKey(session.userId).catch(() => null) || process.env.ELEVENLABS_API_KEY;
 
     if (!apiKey) return NextResponse.json({ error: 'ElevenLabs key not configured' }, { status: 400 });
 

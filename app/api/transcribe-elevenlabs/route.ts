@@ -6,18 +6,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
-import { getRedis } from '@/lib/kv';
+import { getUserElevenLabsKey } from '@/lib/kv';
 
 export const maxDuration = 300; // 5 min timeout for large audio
-
-async function getElevenLabsKey(userId: string): Promise<string | null> {
-  try {
-    const key = await getRedis().get(`user:${userId}:elevenlabs-key`);
-    return key;
-  } catch {
-    return process.env.ELEVENLABS_API_KEY || null;
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     if (!audio) return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
 
-    const apiKey = await getElevenLabsKey(session.userId);
+    const apiKey = await getUserElevenLabsKey(session.userId).catch(() => null) || process.env.ELEVENLABS_API_KEY || null;
     if (!apiKey) return NextResponse.json({ error: 'ElevenLabs API key not configured. Set it in Settings.' }, { status: 400 });
 
     // Build multipart form for ElevenLabs
