@@ -162,11 +162,13 @@ export default function App() {
   const [libText, setLibText] = useState<{ ref: string; heRef: string; he: string; en: string } | null>(null);
   const [libLoadingText, setLibLoadingText] = useState(false);
 
-  const searchLibrary = async (q: string) => {
+  const searchLibrary = async (q: string, cat?: string) => {
     if (!q.trim()) return;
     setLibSearching(true);
     try {
-      const res = await fetch(`/api/sources?q=${encodeURIComponent(q)}`);
+      const params = new URLSearchParams({ q, size: '20' });
+      if (cat && cat !== 'all') params.set('category', cat);
+      const res = await fetch(`/api/sources?${params}`);
       if (res.ok) { const data = await res.json(); setLibResults(data.results || []); }
     } catch {} finally { setLibSearching(false); }
   };
@@ -1675,26 +1677,47 @@ export default function App() {
               </div>
 
               {/* Search */}
-              <form className="search-row" style={{ marginBottom: 20 }} onSubmit={e => { e.preventDefault(); searchLibrary(libQuery); }}>
+              <form className="search-row" style={{ marginBottom: 12 }} onSubmit={e => { e.preventDefault(); searchLibrary(libQuery, libBrowse || undefined); }}>
                 <input className="search-input" value={libQuery} onChange={e => setLibQuery(e.target.value)}
-                  placeholder="Search Sefaria — try a reference (Genesis 1:1) or topic (love, mourning, justice)..." />
+                  placeholder="Search — topic (love, mourning, justice), keyword (hesed), or reference (Genesis 1:1)..." />
                 <button type="submit" className="btn primary" disabled={libSearching}>
                   <span className="icon">{I.search}</span>
                 </button>
               </form>
 
-              {/* Quick browse */}
+              {/* Category filters */}
+              <div style={{ display: 'flex', gap: 4, marginBottom: 12, overflowX: 'auto' }}>
+                {[
+                  { key: 'all', label: 'All' },
+                  { key: 'tanakh', label: 'Tanakh' },
+                  { key: 'talmud', label: 'Talmud' },
+                  { key: 'midrash', label: 'Midrash' },
+                  { key: 'commentary', label: 'Commentary' },
+                ].map(cat => (
+                  <button key={cat.key} className={`tab ${(libBrowse || 'all') === cat.key ? 'active' : ''}`}
+                    style={{ padding: '6px 12px', fontSize: 12 }}
+                    onClick={() => { setLibBrowse(cat.key === 'all' ? null : cat.key); if (libQuery) searchLibrary(libQuery, cat.key === 'all' ? undefined : cat.key); }}>
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Quick topics */}
               <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
                 {[
+                  { label: 'Love', ref: 'love' },
+                  { label: 'Mourning', ref: 'mourning' },
+                  { label: 'Justice', ref: 'justice' },
+                  { label: 'Kindness', ref: 'kindness' },
+                  { label: 'Faith', ref: 'faith' },
+                  { label: 'Peace', ref: 'peace' },
                   { label: 'Torah', ref: 'Genesis 1' },
                   { label: 'Psalms', ref: 'Psalms 23' },
                   { label: 'Proverbs', ref: 'Proverbs 3' },
                   { label: 'Pirkei Avot', ref: 'Pirkei Avot 1' },
-                  { label: 'Kohelet', ref: 'Ecclesiastes 3' },
-                  { label: 'Isaiah', ref: 'Isaiah 40' },
                 ].map(b => (
-                  <button key={b.ref} className={`btn small ${libBrowse === b.ref ? 'primary' : ''}`}
-                    onClick={() => { setLibBrowse(b.ref); setLibQuery(b.ref); searchLibrary(b.ref); }}>
+                  <button key={b.ref} className="btn small"
+                    onClick={() => { setLibQuery(b.ref); searchLibrary(b.ref); }}>
                     {b.label}
                   </button>
                 ))}
@@ -1728,14 +1751,21 @@ export default function App() {
 
               {libResults.length > 0 && (
                 <div style={{ marginBottom: 28 }}>
-                  <div className="nav-section" style={{ marginBottom: 10 }}>Search Results</div>
+                  <div className="nav-section" style={{ marginBottom: 10 }}>
+                    {libResults.length} Results {libQuery && `for "${libQuery}"`}
+                  </div>
                   <div className="source-list">
                     {libResults.map((s, i) => (
-                      <div key={i} className="source-card" onClick={() => { setLibText(s); }}>
-                        <div className="source-cite">{s.ref}</div>
-                        {s.he && <div className="source-heb" style={{ fontSize: 18 }}>{s.he.substring(0, 150)}{s.he.length > 150 ? '...' : ''}</div>}
-                        {s.en && <div className="source-en" style={{ fontSize: 14 }}>{s.en.substring(0, 150)}{s.en.length > 150 ? '...' : ''}</div>}
-                        {s.categories?.length > 0 && <div className="mono" style={{ fontSize: 9, color: 'var(--ink-4)', marginTop: 8 }}>{s.categories.join(' / ')}</div>}
+                      <div key={i} className="source-card" onClick={() => { setLibText(s); }} style={{ cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div className="source-cite">{s.ref}</div>
+                          {s.categories?.length > 0 && (
+                            <span className="badge" style={{ fontSize: 8, padding: '2px 6px' }}>{s.categories[0]}</span>
+                          )}
+                        </div>
+                        {s.he && <div className="source-heb" style={{ fontSize: 18 }}>{s.he.substring(0, 250)}{s.he.length > 250 ? '...' : ''}</div>}
+                        {s.en && <div className="source-en" style={{ fontSize: 14 }}>{s.en.substring(0, 250)}{s.en.length > 250 ? '...' : ''}</div>}
+                        {!s.en && !s.he && s.heRef && <div className="heb" style={{ fontSize: 14, color: 'var(--ink-3)' }}>{s.heRef}</div>}
                       </div>
                     ))}
                   </div>
