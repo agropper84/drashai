@@ -135,6 +135,35 @@ export default function App() {
   const [showNewTemplate, setShowNewTemplate] = useState(false);
   const [newTempl, setNewTempl] = useState<Template>({ id: '', heb: '', en: '', sections: '', desc: '', prompt: '' });
 
+  // Library
+  const [libQuery, setLibQuery] = useState('');
+  const [libResults, setLibResults] = useState<{ ref: string; heRef: string; he: string; en: string; categories: string[] }[]>([]);
+  const [libSearching, setLibSearching] = useState(false);
+  const [libSaved, setLibSaved] = useState<{ ref: string; he: string; en: string; savedAt: string }[]>([]);
+  const [libBrowse, setLibBrowse] = useState<string | null>(null);
+  const [libText, setLibText] = useState<{ ref: string; heRef: string; he: string; en: string } | null>(null);
+  const [libLoadingText, setLibLoadingText] = useState(false);
+
+  const searchLibrary = async (q: string) => {
+    if (!q.trim()) return;
+    setLibSearching(true);
+    try {
+      const res = await fetch(`/api/sources?q=${encodeURIComponent(q)}`);
+      if (res.ok) { const data = await res.json(); setLibResults(data.results || []); }
+    } catch {} finally { setLibSearching(false); }
+  };
+
+  const browseText = async (ref: string) => {
+    setLibLoadingText(true); setLibText(null);
+    try {
+      const res = await fetch(`/api/sources?q=${encodeURIComponent(ref)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results?.[0]) setLibText(data.results[0]);
+      }
+    } catch {} finally { setLibLoadingText(false); }
+  };
+
   const toggleSparkSelect = (id: string) => {
     setSparkSelected(prev => {
       const next = new Set(prev);
@@ -1473,20 +1502,117 @@ export default function App() {
                   <div className="page-title-en">Library</div>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
-                <div className="card" style={{ padding: 22 }}>
-                  <div className="mono" style={{ color: 'var(--gold)', marginBottom: 8 }}>Sefaria</div>
-                  <p style={{ fontSize: 20, fontWeight: 600 }}>Jewish Texts</p>
-                  <p style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 6 }}>Search Torah, Talmud, Midrash, and more via Sefaria&apos;s library</p>
-                  <button className="btn small" style={{ marginTop: 12 }}><span className="icon">{I.search}</span> Search</button>
-                </div>
-                <div className="card" style={{ padding: 22 }}>
-                  <div className="mono" style={{ color: 'var(--gold)', marginBottom: 8 }}>Personal</div>
-                  <p style={{ fontSize: 20, fontWeight: 600 }}>My Library</p>
-                  <p style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 6 }}>Your uploaded notes, books, and personal source collection</p>
-                  <button className="btn small" style={{ marginTop: 12 }}><span className="icon">{I.plus}</span> Upload</button>
-                </div>
+
+              {/* Search */}
+              <form className="search-row" style={{ marginBottom: 20 }} onSubmit={e => { e.preventDefault(); searchLibrary(libQuery); }}>
+                <input className="search-input" value={libQuery} onChange={e => setLibQuery(e.target.value)}
+                  placeholder="Search Sefaria — try a reference (Genesis 1:1) or topic (love, mourning, justice)..." />
+                <button type="submit" className="btn primary" disabled={libSearching}>
+                  <span className="icon">{I.search}</span>
+                </button>
+              </form>
+
+              {/* Quick browse */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Torah', ref: 'Genesis 1' },
+                  { label: 'Psalms', ref: 'Psalms 23' },
+                  { label: 'Proverbs', ref: 'Proverbs 3' },
+                  { label: 'Pirkei Avot', ref: 'Pirkei Avot 1' },
+                  { label: 'Kohelet', ref: 'Ecclesiastes 3' },
+                  { label: 'Isaiah', ref: 'Isaiah 40' },
+                ].map(b => (
+                  <button key={b.ref} className={`btn small ${libBrowse === b.ref ? 'primary' : ''}`}
+                    onClick={() => { setLibBrowse(b.ref); setLibQuery(b.ref); searchLibrary(b.ref); }}>
+                    {b.label}
+                  </button>
+                ))}
               </div>
+
+              {/* Text viewer */}
+              {libText && (
+                <div className="card" style={{ padding: 24, marginBottom: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                    <div>
+                      <div className="mono" style={{ color: 'var(--gold)', marginBottom: 4 }}>{libText.ref}</div>
+                      {libText.heRef && <div className="heb" style={{ fontSize: 14, color: 'var(--ink-3)' }}>{libText.heRef}</div>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn small" onClick={() => {
+                        setLibSaved(prev => [{ ref: libText.ref, he: libText.he, en: libText.en, savedAt: new Date().toISOString() }, ...prev]);
+                      }}>Save</button>
+                      <button className="btn ghost small" onClick={() => setLibText(null)}>
+                        <span className="icon" style={{ width: 14, height: 14 }}>{I.x}</span>
+                      </button>
+                    </div>
+                  </div>
+                  {libText.he && <div className="source-heb" style={{ marginBottom: 12 }}>{libText.he}</div>}
+                  {libText.en && <div className="source-en">{libText.en}</div>}
+                </div>
+              )}
+              {libLoadingText && <div className="mono" style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)' }}>Loading text...</div>}
+
+              {/* Search results */}
+              {libSearching && <div className="mono" style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)' }}>Searching Sefaria...</div>}
+
+              {libResults.length > 0 && (
+                <div style={{ marginBottom: 28 }}>
+                  <div className="nav-section" style={{ marginBottom: 10 }}>Search Results</div>
+                  <div className="source-list">
+                    {libResults.map((s, i) => (
+                      <div key={i} className="source-card" onClick={() => { setLibText(s); }}>
+                        <div className="source-cite">{s.ref}</div>
+                        {s.he && <div className="source-heb" style={{ fontSize: 18 }}>{s.he.substring(0, 150)}{s.he.length > 150 ? '...' : ''}</div>}
+                        {s.en && <div className="source-en" style={{ fontSize: 14 }}>{s.en.substring(0, 150)}{s.en.length > 150 ? '...' : ''}</div>}
+                        {s.categories?.length > 0 && <div className="mono" style={{ fontSize: 9, color: 'var(--ink-4)', marginTop: 8 }}>{s.categories.join(' / ')}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Saved sources */}
+              {libSaved.length > 0 && (
+                <div style={{ marginBottom: 28 }}>
+                  <div className="nav-section" style={{ marginBottom: 10 }}>Saved Sources</div>
+                  <div className="source-list">
+                    {libSaved.map((s, i) => (
+                      <div key={i} className="source-card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <div className="source-cite">{s.ref}</div>
+                          <button className="btn ghost small" onClick={() => setLibSaved(prev => prev.filter((_, j) => j !== i))}>
+                            <span className="icon" style={{ width: 12, height: 12 }}>{I.trash}</span>
+                          </button>
+                        </div>
+                        {s.he && <div className="source-heb" style={{ fontSize: 16 }}>{s.he.substring(0, 100)}{s.he.length > 100 ? '...' : ''}</div>}
+                        {s.en && <div className="source-en" style={{ fontSize: 13 }}>{s.en.substring(0, 100)}{s.en.length > 100 ? '...' : ''}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!libSearching && libResults.length === 0 && libSaved.length === 0 && !libText && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+                  <div className="card" style={{ padding: 22 }}>
+                    <div className="mono" style={{ color: 'var(--gold)', marginBottom: 8 }}>Sefaria</div>
+                    <p style={{ fontSize: 20, fontWeight: 600 }}>Jewish Texts</p>
+                    <p style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 6 }}>3,000+ years of Torah, Talmud, Midrash, Halakha, and commentaries</p>
+                    <p style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 8, fontStyle: 'italic' }}>
+                      Search by reference (Genesis 1:1), topic (mourning), or keyword (hesed)
+                    </p>
+                  </div>
+                  <div className="card" style={{ padding: 22 }}>
+                    <div className="mono" style={{ color: 'var(--gold)', marginBottom: 8 }}>Personal</div>
+                    <p style={{ fontSize: 20, fontWeight: 600 }}>Saved Sources</p>
+                    <p style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 6 }}>Sources you save from searches appear here for quick access</p>
+                    <p style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 8, fontStyle: 'italic' }}>
+                      Save sources to build your personal reference collection
+                    </p>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
