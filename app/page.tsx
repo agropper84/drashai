@@ -79,6 +79,9 @@ export default function App() {
   // Modals
   const [showNew, setShowNew] = useState(false);
   const [showRec, setShowRec] = useState(false);
+  const [showSources, setShowSources] = useState(false);
+  const [sourceQuery, setSourceQuery] = useState('');
+  const [sourceTab, setSourceTab] = useState('all');
   const [recPhase, setRecPhase] = useState<'vow' | 'recording' | 'review'>('vow');
   const [recConsent, setRecConsent] = useState(false);
   const [recTranscript, setRecTranscript] = useState('');
@@ -162,6 +165,18 @@ export default function App() {
   useEffect(() => {
     if (openFileId) setView('file');
   }, [openFileId]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSources(true);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // Theme switching
   useEffect(() => {
@@ -661,11 +676,17 @@ export default function App() {
                 <div>
                   <div className="section-head">
                     <div><h2 className="section-title">מקורות</h2><div className="section-title-en">Sources</div></div>
-                    <button className="btn small"><span className="icon">{I.search}</span> Find Source</button>
+                    <button className="btn small" onClick={() => setShowSources(true)}><span className="icon">{I.search}</span> Find Source</button>
                   </div>
                   <div className="empty-state" style={{ padding: 40 }}>
                     <p style={{ fontSize: 18 }}>No sources linked yet</p>
                     <p style={{ fontSize: 14, marginTop: 8 }}>Search Torah, Talmud, Midrash and personal library to attach relevant texts</p>
+                    <button className="btn primary" style={{ marginTop: 16 }} onClick={() => setShowSources(true)}>
+                      <span className="icon">{I.search}</span> Search Sources
+                    </button>
+                    <p style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 12 }}>
+                      <span className="kbd">⌘K</span> to search from anywhere
+                    </p>
                   </div>
                 </div>
               )}
@@ -1082,6 +1103,62 @@ export default function App() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ SOURCE SEARCH MODAL ═══ */}
+      {showSources && (
+        <div className="modal-shroud" onClick={() => setShowSources(false)}>
+          <div className="modal wide" onClick={e => e.stopPropagation()}>
+            <div className="modal-eyebrow">Find & attach</div>
+            <h2 className="modal-title">חיפוש מקורות</h2>
+            <div className="modal-title-en">Search Sources</div>
+
+            <div className="search-row">
+              <input className="search-input" value={sourceQuery} onChange={e => setSourceQuery(e.target.value)}
+                placeholder="Search Torah, Talmud, Midrash..." autoFocus />
+              <button className="btn primary"><span className="icon">{I.search}</span></button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 4, marginBottom: 18, overflowX: 'auto' }}>
+              {['all', 'tanakh', 'talmud', 'midrash', 'commentary', 'my library'].map(tab => (
+                <button key={tab} className={`tab ${sourceTab === tab ? 'active' : ''}`}
+                  style={{ padding: '8px 12px', fontSize: 13 }}
+                  onClick={() => setSourceTab(tab)}>
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Sample results */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[
+                { cite: 'Bereishit 1:27', heb: 'וַיִּבְרָא אֱלֹהִים אֶת הָאָדָם בְּצַלְמוֹ', en: 'And God created man in His image', lib: 'Sefaria' },
+                { cite: 'Pirkei Avot 1:14', heb: 'אִם אֵין אֲנִי לִי מִי לִי', en: 'If I am not for myself, who will be for me?', lib: 'Sefaria' },
+                { cite: 'Kohelet 3:1', heb: 'לַכֹּל זְמָן וְעֵת לְכָל חֵפֶץ תַּחַת הַשָּׁמָיִם', en: 'To everything there is a season, and a time to every purpose under the heaven', lib: 'Sefaria' },
+              ].filter(() => !sourceQuery || true).map((s, i) => (
+                <div key={i} className="search-result">
+                  <div>
+                    <div className="source-cite">{s.cite}</div>
+                    <div className="source-heb" style={{ fontSize: 18, marginBottom: 4 }}>{s.heb}</div>
+                    <div className="source-en" style={{ fontSize: 14 }}>{s.en}</div>
+                    <div className="mono" style={{ fontSize: 9, color: 'var(--ink-4)', marginTop: 6 }}>{s.lib}</div>
+                  </div>
+                  <button className="btn small primary">Attach</button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 16, padding: 12, background: 'var(--bg-sunken)', borderRadius: 6 }}>
+              <p style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>
+                🔍 AI will suggest sources based on themes detected in your conversation transcript
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="btn ghost" onClick={() => setShowSources(false)}>Close</button>
+            </div>
           </div>
         </div>
       )}
