@@ -267,6 +267,10 @@ export default function App() {
   const [hasElevenLabsKey, setHasElevenLabsKey] = useState(false);
   const [claudeKeyStatus, setClaudeKeyStatus] = useState<{ ok: boolean; error?: string } | null>(null);
   const [elevenKeyStatus, setElevenKeyStatus] = useState<{ ok: boolean; error?: string } | null>(null);
+  const [settingsTab, setSettingsTab] = useState<'keys' | 'transcription' | 'appearance' | 'privacy' | 'account'>('keys');
+  const [noiseReduction, setNoiseReduction] = useState(false);
+  const [transcriptionLang, setTranscriptionLang] = useState('auto');
+  const [recordingRetention, setRecordingRetention] = useState('72');
 
   // New file form
   const [newType, setNewType] = useState('hesped');
@@ -393,6 +397,8 @@ export default function App() {
       const formData = new FormData();
       formData.append('audio', audioBlob, `recording-${Date.now()}.webm`);
       formData.append('mode', 'encounter');
+      formData.append('language', transcriptionLang);
+      if (noiseReduction) formData.append('noiseReduction', 'true');
       const res = await fetch('/api/transcribe-elevenlabs', { method: 'POST', body: formData });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Transcription failed' }));
@@ -1230,6 +1236,8 @@ export default function App() {
                             const fd = new FormData();
                             fd.append('audio', blob, 'spark-dictation.webm');
                             fd.append('mode', 'dictation');
+                            fd.append('language', transcriptionLang);
+                            if (noiseReduction) fd.append('noiseReduction', 'true');
                             const res = await fetch('/api/transcribe-elevenlabs', { method: 'POST', body: fd });
                             if (res.ok) {
                               const data = await res.json();
@@ -1959,151 +1967,222 @@ export default function App() {
                 </div>
               </div>
 
-              {/* AI Keys */}
-              <div className="settings-section">
-                <h2 className="settings-h">מפתחות AI</h2>
-                <div className="settings-h-en">API Keys</div>
-                <div className="settings-block">
-                  <div className="settings-row settings-row-stack">
-                    <div>
-                      <div className="settings-label">Anthropic (Claude)</div>
-                      <div className="settings-help">
-                        Required for generating sermons, eulogies, and other content.{' '}
-                        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>
-                          Get your API key →
-                        </a>
-                      </div>
-                    </div>
-                    <div className="key-input" style={{ marginTop: 8 }}>
-                      <input className="input" type="password" value={claudeKey}
-                        onChange={e => setClaudeKey(e.target.value)}
-                        placeholder={hasClaudeKey ? '••••••••••••••••' : 'sk-ant-...'} />
-                      <span className={`key-status ${hasClaudeKey ? 'connected' : 'empty'}`}
-                        style={claudeKeyStatus && !claudeKeyStatus.ok ? { background: 'rgba(220,38,38,0.08)', color: 'var(--accent)' } : undefined}>
-                        {claudeKeyStatus ? (claudeKeyStatus.ok ? '● Connected' : `● ${claudeKeyStatus.error}`) : hasClaudeKey ? '● Connected' : '○ Not set'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="settings-row settings-row-stack">
-                    <div>
-                      <div className="settings-label">ElevenLabs</div>
-                      <div className="settings-help">
-                        For voice transcription (Scribe v2 with speaker diarization).{' '}
-                        <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>
-                          Get your API key →
-                        </a>
-                      </div>
-                    </div>
-                    <div className="key-input" style={{ marginTop: 8 }}>
-                      <input className="input" type="password" value={elevenKey}
-                        onChange={e => setElevenKey(e.target.value)}
-                        placeholder={hasElevenLabsKey ? '••••••••••••••••' : 'xi-...'} />
-                      <span className={`key-status ${hasElevenLabsKey ? 'connected' : 'empty'}`}
-                        style={elevenKeyStatus && !elevenKeyStatus.ok ? { background: 'rgba(220,38,38,0.08)', color: 'var(--accent)' } : undefined}>
-                        {elevenKeyStatus ? (elevenKeyStatus.ok ? '● Connected' : `● ${elevenKeyStatus.error}`) : hasElevenLabsKey ? '● Connected' : '○ Not set'}
-                      </span>
-                    </div>
-                  </div>
-                  <div style={{ marginTop: 14 }}>
-                    <button className="btn primary" onClick={handleSaveKeys} disabled={savingKeys || (!claudeKey && !elevenKey)}>
-                      {keysSaved ? '✓ Saved & Tested' : savingKeys ? 'Testing...' : 'Save & Test Keys'}
-                    </button>
-                  </div>
-                  <div className="privacy-vow" style={{ marginTop: 14 }}>
-                    <div className="privacy-vow-title">
-                      <span className="icon" style={{ width: 12, height: 12 }}>{I.lock}</span> Security
-                    </div>
-                    <p style={{ fontSize: 14 }}>API keys are stored encrypted in your account. They never leave the server and are only used to make API calls on your behalf.</p>
-                  </div>
-                </div>
+              {/* Settings tabs */}
+              <div className="tabs" style={{ marginBottom: 24 }}>
+                {[
+                  { key: 'keys', en: 'API Keys' },
+                  { key: 'transcription', en: 'Transcription' },
+                  { key: 'appearance', en: 'Appearance' },
+                  { key: 'privacy', en: 'Privacy' },
+                  { key: 'account', en: 'Account' },
+                ].map(t => (
+                  <button key={t.key} className={`tab ${settingsTab === t.key ? 'active' : ''}`}
+                    onClick={() => setSettingsTab(t.key as typeof settingsTab)}>
+                    <span className="en">{t.en}</span>
+                  </button>
+                ))}
               </div>
 
-              {/* Appearance */}
-              <div className="settings-section">
-                <h2 className="settings-h">מראה</h2>
-                <div className="settings-h-en">Appearance</div>
-                <div className="settings-block">
-                  <div className="settings-label" style={{ marginBottom: 12 }}>Theme</div>
-                  <div className="theme-grid">
-                    {[
-                      { key: 'warm', label: 'Warm', sub: 'Parchment & oxblood', colors: ['#f0e7d2', '#7a2e2a', '#a87a2c'] },
-                      { key: 'cool', label: 'Cool', sub: 'Stone & slate', colors: ['#e8ebf0', '#2f4866', '#6d6a4a'] },
-                      { key: 'sacred', label: 'Sacred', sub: 'Deep night & gold', colors: ['#1b2038', '#d4a955', '#8aa07a'] },
-                    ].map(t => (
-                      <button key={t.key} className={`theme-card ${theme === t.key ? 'active' : ''}`}
-                        onClick={() => setTheme(t.key)}>
-                        <div className="theme-card-preview" style={{ display: 'flex' }}>
-                          {t.colors.map((c, i) => <div key={i} style={{ flex: 1, background: c }} />)}
+              {/* ── API Keys Tab ── */}
+              {settingsTab === 'keys' && (
+                <div className="settings-section">
+                  <div className="settings-block">
+                    <div className="settings-row settings-row-stack">
+                      <div>
+                        <div className="settings-label">Anthropic (Claude)</div>
+                        <div className="settings-help">
+                          Required for generating sermons, eulogies, and other content.{' '}
+                          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Get your API key →</a>
                         </div>
-                        <div className="theme-card-label">{t.label}</div>
-                        <div className="theme-card-sub">{t.sub}</div>
-                        {theme === t.key && <span className="check" style={{ position: 'absolute', top: 10, right: 10, width: 16, height: 16 }}>{I.check}</span>}
+                      </div>
+                      <div className="key-input" style={{ marginTop: 8 }}>
+                        <input className="input" type="password" value={claudeKey} onChange={e => setClaudeKey(e.target.value)}
+                          placeholder={hasClaudeKey ? '••••••••••••••••' : 'sk-ant-...'} />
+                        <span className={`key-status ${hasClaudeKey ? 'connected' : 'empty'}`}
+                          style={claudeKeyStatus && !claudeKeyStatus.ok ? { background: 'rgba(220,38,38,0.08)', color: 'var(--accent)' } : undefined}>
+                          {claudeKeyStatus ? (claudeKeyStatus.ok ? '● Connected' : `● ${claudeKeyStatus.error}`) : hasClaudeKey ? '● Connected' : '○ Not set'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="settings-row settings-row-stack">
+                      <div>
+                        <div className="settings-label">ElevenLabs</div>
+                        <div className="settings-help">
+                          For voice transcription (Scribe v2 with speaker diarization).{' '}
+                          <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Get your API key →</a>
+                        </div>
+                      </div>
+                      <div className="key-input" style={{ marginTop: 8 }}>
+                        <input className="input" type="password" value={elevenKey} onChange={e => setElevenKey(e.target.value)}
+                          placeholder={hasElevenLabsKey ? '••••••••••••••••' : 'xi-...'} />
+                        <span className={`key-status ${hasElevenLabsKey ? 'connected' : 'empty'}`}
+                          style={elevenKeyStatus && !elevenKeyStatus.ok ? { background: 'rgba(220,38,38,0.08)', color: 'var(--accent)' } : undefined}>
+                          {elevenKeyStatus ? (elevenKeyStatus.ok ? '● Connected' : `● ${elevenKeyStatus.error}`) : hasElevenLabsKey ? '● Connected' : '○ Not set'}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 14 }}>
+                      <button className="btn primary" onClick={handleSaveKeys} disabled={savingKeys || (!claudeKey && !elevenKey)}>
+                        {keysSaved ? '✓ Saved & Tested' : savingKeys ? 'Testing...' : 'Save & Test Keys'}
                       </button>
-                    ))}
+                    </div>
+                    <div className="privacy-vow" style={{ marginTop: 14 }}>
+                      <div className="privacy-vow-title"><span className="icon" style={{ width: 12, height: 12 }}>{I.lock}</span> Security</div>
+                      <p style={{ fontSize: 14 }}>API keys are stored encrypted. They never leave the server and are only used to make API calls on your behalf.</p>
+                    </div>
                   </div>
-                  <div style={{ marginTop: 16 }}>
-                    <div className="settings-label" style={{ marginBottom: 8 }}>Mode</div>
-                    <div className="mode-toggle">
-                      {['light', 'dark', 'auto'].map(m => (
-                        <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
-                          {m.charAt(0).toUpperCase() + m.slice(1)}
+                </div>
+              )}
+
+              {/* ── Transcription Tab ── */}
+              {settingsTab === 'transcription' && (
+                <div className="settings-section">
+                  <div className="settings-block">
+                    <div className="settings-row">
+                      <div>
+                        <div className="settings-label">Background noise reduction</div>
+                        <div className="settings-help">ElevenLabs audio isolation — removes background noise before transcription. May increase processing time.</div>
+                      </div>
+                      <div className="mode-toggle">
+                        <button className={noiseReduction ? 'active' : ''} onClick={() => setNoiseReduction(true)}>On</button>
+                        <button className={!noiseReduction ? 'active' : ''} onClick={() => setNoiseReduction(false)}>Off</button>
+                      </div>
+                    </div>
+                    <div className="settings-row settings-row-stack">
+                      <div>
+                        <div className="settings-label">Transcription language</div>
+                        <div className="settings-help">Set to Auto for automatic detection, or choose a specific language for better accuracy.</div>
+                      </div>
+                      <select className="input" style={{ marginTop: 8 }} value={transcriptionLang} onChange={e => setTranscriptionLang(e.target.value)}>
+                        <option value="auto">Auto-detect</option>
+                        <optgroup label="Common">
+                          <option value="en">English</option>
+                          <option value="he">Hebrew (עברית)</option>
+                          <option value="ar">Arabic (العربية)</option>
+                          <option value="fr">French (Français)</option>
+                          <option value="es">Spanish (Español)</option>
+                          <option value="de">German (Deutsch)</option>
+                          <option value="ru">Russian (Русский)</option>
+                          <option value="yi">Yiddish (ייִדיש)</option>
+                        </optgroup>
+                        <optgroup label="More">
+                          <option value="pt">Portuguese</option>
+                          <option value="it">Italian</option>
+                          <option value="nl">Dutch</option>
+                          <option value="pl">Polish</option>
+                          <option value="tr">Turkish</option>
+                          <option value="ja">Japanese</option>
+                          <option value="ko">Korean</option>
+                          <option value="zh">Chinese</option>
+                          <option value="hi">Hindi</option>
+                          <option value="fa">Persian (Farsi)</option>
+                          <option value="am">Amharic</option>
+                        </optgroup>
+                      </select>
+                    </div>
+                    <div className="settings-row settings-row-stack">
+                      <div>
+                        <div className="settings-label">Recording storage duration</div>
+                        <div className="settings-help">How long audio recordings are kept in cloud storage. Transcripts are always retained.</div>
+                      </div>
+                      <select className="input" style={{ marginTop: 8 }} value={recordingRetention} onChange={e => setRecordingRetention(e.target.value)}>
+                        <option value="24">24 hours</option>
+                        <option value="72">3 days</option>
+                        <option value="168">1 week</option>
+                        <option value="720">30 days</option>
+                        <option value="0">Keep indefinitely</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <hr className="divider" />
+
+                  <div className="settings-block">
+                    <div className="settings-label" style={{ marginBottom: 8 }}>Improve transcription accuracy</div>
+                    <div className="settings-help" style={{ marginBottom: 14 }}>Review previous transcriptions to help the AI learn your speaking patterns, terminology, and common corrections.</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn small" onClick={() => { setView('home'); /* TODO: open transcript review */ }}>
+                        <span className="icon">{I.doc}</span> Review Transcripts
+                      </button>
+                      <button className="btn small" onClick={() => { setView('home'); /* TODO: open recording review */ }}>
+                        <span className="icon">{I.mic}</span> Review Recordings
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Appearance Tab ── */}
+              {settingsTab === 'appearance' && (
+                <div className="settings-section">
+                  <div className="settings-block">
+                    <div className="settings-label" style={{ marginBottom: 12 }}>Theme</div>
+                    <div className="theme-grid">
+                      {[
+                        { key: 'warm', label: 'Warm', sub: 'Parchment & oxblood', colors: ['#f0e7d2', '#7a2e2a', '#a87a2c'] },
+                        { key: 'cool', label: 'Cool', sub: 'Stone & slate', colors: ['#e8ebf0', '#2f4866', '#6d6a4a'] },
+                        { key: 'sacred', label: 'Sacred', sub: 'Deep night & gold', colors: ['#1b2038', '#d4a955', '#8aa07a'] },
+                      ].map(t => (
+                        <button key={t.key} className={`theme-card ${theme === t.key ? 'active' : ''}`} onClick={() => setTheme(t.key)}>
+                          <div className="theme-card-preview" style={{ display: 'flex' }}>
+                            {t.colors.map((c, i) => <div key={i} style={{ flex: 1, background: c }} />)}
+                          </div>
+                          <div className="theme-card-label">{t.label}</div>
+                          <div className="theme-card-sub">{t.sub}</div>
+                          {theme === t.key && <span className="check" style={{ position: 'absolute', top: 10, right: 10, width: 16, height: 16 }}>{I.check}</span>}
                         </button>
                       ))}
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Prompts note — moved to Templates */}
-              <div className="settings-section">
-                <h2 className="settings-h">הנחיות</h2>
-                <div className="settings-h-en">Prompts</div>
-                <div className="settings-block">
-                  <p style={{ fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.5 }}>
-                    AI generation prompts are now managed per template. Open any template to edit its prompt, style examples, and context variables.
-                  </p>
-                  <button className="btn small" style={{ marginTop: 12 }} onClick={() => { setView('templates'); setOpenFileId(null); }}>
-                    <span className="icon">{I.templ}</span> Go to Templates
-                  </button>
-                </div>
-              </div>
-
-              {/* Privacy */}
-              <div className="settings-section">
-                <h2 className="settings-h">חיסיון</h2>
-                <div className="settings-h-en">Privacy</div>
-                <div className="settings-block">
-                  <div className="settings-row">
-                    <div>
-                      <div className="settings-label">Apply pastoral seal by default</div>
-                      <div className="settings-help">New encounters are sealed automatically</div>
+                    <div style={{ marginTop: 16 }}>
+                      <div className="settings-label" style={{ marginBottom: 8 }}>Mode</div>
+                      <div className="mode-toggle">
+                        {['light', 'dark', 'auto'].map(m => (
+                          <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
+                            {m.charAt(0).toUpperCase() + m.slice(1)}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="mode-toggle"><button className="active">On</button><button>Off</button></div>
-                  </div>
-                  <div className="settings-row">
-                    <div>
-                      <div className="settings-label">Auto-redact names on export</div>
-                      <div className="settings-help">Replace congregant names with initials when sharing</div>
-                    </div>
-                    <div className="mode-toggle"><button className="active">On</button><button>Off</button></div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Account */}
-              <div className="settings-section">
-                <h2 className="settings-h">חשבון</h2>
-                <div className="settings-h-en">Account</div>
-                <div className="settings-block">
-                  <div className="settings-row">
-                    <div>
-                      <div className="settings-label">Signed in</div>
-                      <div className="settings-help">via Google OAuth</div>
+              {/* ── Privacy Tab ── */}
+              {settingsTab === 'privacy' && (
+                <div className="settings-section">
+                  <div className="settings-block">
+                    <div className="settings-row">
+                      <div>
+                        <div className="settings-label">Apply pastoral seal by default</div>
+                        <div className="settings-help">New encounters are sealed automatically</div>
+                      </div>
+                      <div className="mode-toggle"><button className="active">On</button><button>Off</button></div>
                     </div>
-                    <a href="/api/auth/logout" className="btn small" style={{ color: 'var(--accent)' }}>Sign Out</a>
+                    <div className="settings-row">
+                      <div>
+                        <div className="settings-label">Auto-redact names on export</div>
+                        <div className="settings-help">Replace congregant names with initials when sharing</div>
+                      </div>
+                      <div className="mode-toggle"><button className="active">On</button><button>Off</button></div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {/* ── Account Tab ── */}
+              {settingsTab === 'account' && (
+                <div className="settings-section">
+                  <div className="settings-block">
+                    <div className="settings-row">
+                      <div>
+                        <div className="settings-label">Signed in as {userName || 'User'}</div>
+                        <div className="settings-help">via Google OAuth</div>
+                      </div>
+                      <a href="/api/auth/logout" className="btn small" style={{ color: 'var(--accent)' }}>Sign Out</a>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
 

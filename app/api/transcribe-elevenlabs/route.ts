@@ -27,7 +27,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const audio = formData.get('audio') as File | null;
     const mode = (formData.get('mode') as string) || 'encounter';
-    const language = (formData.get('language') as string) || 'en';
+    const language = (formData.get('language') as string) || 'auto';
+    const noiseReduce = formData.get('noiseReduction') === 'true';
 
     if (!audio) return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
 
@@ -47,7 +48,10 @@ export async function POST(request: NextRequest) {
     const filePart = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${audio.name || 'recording.webm'}"\r\nContent-Type: ${audio.type || 'audio/webm'}\r\n\r\n`;
 
     addField('model_id', 'scribe_v2');
-    addField('language_code', language);
+    // Language: omit for auto-detect (ElevenLabs detects if absent), otherwise send ISO code
+    if (language && language !== 'auto') addField('language_code', language);
+    // Noise reduction
+    if (noiseReduce) addField('noise_reduction', 'true');
 
     // Diarization for encounter mode
     if (mode === 'encounter') {
