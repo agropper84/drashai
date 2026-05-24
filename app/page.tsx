@@ -82,6 +82,8 @@ export default function App() {
   const [showSources, setShowSources] = useState(false);
   const [sourceQuery, setSourceQuery] = useState('');
   const [sourceTab, setSourceTab] = useState('all');
+  const [sourceResults, setSourceResults] = useState<{ ref: string; heRef: string; he: string; en: string; categories: string[] }[]>([]);
+  const [searchingSource, setSearchingSource] = useState(false);
   const [recPhase, setRecPhase] = useState<'vow' | 'recording' | 'review'>('vow');
   const [recConsent, setRecConsent] = useState(false);
   const [recTranscript, setRecTranscript] = useState('');
@@ -816,9 +818,28 @@ export default function App() {
                           <span className="icon">{I.copy}</span> Copy
                         </button>
                         <button className="btn" onClick={() => window.print()}>
-                          <span className="icon">{I.print}</span> Print
+                          <span className="icon">{I.print}</span> Print / PDF
                         </button>
-                        <button className="btn">
+                        <button className="btn" onClick={() => {
+                          const content = activeFile.generatedContent![activeFile.generatedContent!.length - 1].content;
+                          const typeInfo = FILE_TYPES.find(t => t.key === activeFile.type);
+                          const html = `<html><head><meta charset="utf-8"><style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.7;font-size:16px;color:#1a1a1a}h1{text-align:center;font-size:28px}p{margin-bottom:1em}</style></head><body><h1>${typeInfo?.en || 'Document'}: ${activeFile.congregantName}</h1>${content.split('\n\n').map(p => '<p>' + p + '</p>').join('')}</body></html>`;
+                          const blob = new Blob([html], { type: 'application/msword' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a'); a.href = url;
+                          a.download = `${activeFile.congregantName} - ${typeInfo?.en || 'Document'}.doc`;
+                          a.click(); URL.revokeObjectURL(url);
+                        }}>
+                          <span className="icon">{I.doc}</span> Word
+                        </button>
+                        <button className="btn" onClick={() => {
+                          const content = activeFile.generatedContent![activeFile.generatedContent!.length - 1].content;
+                          if (navigator.share) {
+                            navigator.share({ title: activeFile.congregantName, text: content });
+                          } else {
+                            handleCopy(content);
+                          }
+                        }}>
                           <span className="icon">{I.share}</span> Share
                         </button>
                       </div>
@@ -1227,11 +1248,23 @@ export default function App() {
             <h2 className="modal-title">חיפוש מקורות</h2>
             <div className="modal-title-en">Search Sources</div>
 
-            <div className="search-row">
+            <form className="search-row" onSubmit={async (e) => {
+              e.preventDefault();
+              if (!sourceQuery.trim()) return;
+              setSearchingSource(true);
+              try {
+                const catMap: Record<string, string> = { tanakh: 'Tanakh', talmud: 'Talmud', midrash: 'Midrash Rabbah', commentary: 'Commentary' };
+                const cat = catMap[sourceTab] || '';
+                const res = await fetch(`/api/sources?q=${encodeURIComponent(sourceQuery)}&category=${encodeURIComponent(cat)}`);
+                if (res.ok) { const data = await res.json(); setSourceResults(data.results || []); }
+              } catch {} finally { setSearchingSource(false); }
+            }}>
               <input className="search-input" value={sourceQuery} onChange={e => setSourceQuery(e.target.value)}
-                placeholder="Search Torah, Talmud, Midrash..." autoFocus />
-              <button className="btn primary"><span className="icon">{I.search}</span></button>
-            </div>
+                placeholder="Search Torah, Talmud, Midrash... (e.g., Genesis 1:1, love, mourning)" autoFocus />
+              <button type="submit" className="btn primary" disabled={searchingSource}>
+                <span className="icon">{I.search}</span>
+              </button>
+            </form>
 
             <div style={{ display: 'flex', gap: 4, marginBottom: 18, overflowX: 'auto' }}>
               {['all', 'tanakh', 'talmud', 'midrash', 'commentary', 'my library'].map(tab => (
@@ -1243,21 +1276,32 @@ export default function App() {
               ))}
             </div>
 
-            {/* Sample results */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[
-                { cite: 'Bereishit 1:27', heb: 'וַיִּבְרָא אֱלֹהִים אֶת הָאָדָם בְּצַלְמוֹ', en: 'And God created man in His image', lib: 'Sefaria' },
-                { cite: 'Pirkei Avot 1:14', heb: 'אִם אֵין אֲנִי לִי מִי לִי', en: 'If I am not for myself, who will be for me?', lib: 'Sefaria' },
-                { cite: 'Kohelet 3:1', heb: 'לַכֹּל זְמָן וְעֵת לְכָל חֵפֶץ תַּחַת הַשָּׁמָיִם', en: 'To everything there is a season, and a time to every purpose under the heaven', lib: 'Sefaria' },
-              ].filter(() => !sourceQuery || true).map((s, i) => (
+            {searchingSource && <div className="mono" style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)' }}>Searching Sefaria...</div>}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 400, overflowY: 'auto' }}>
+              {sourceResults.length === 0 && !searchingSource && sourceQuery && (
+                <div style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)', fontStyle: 'italic' }}>
+                  No results found. Try a different search term or reference (e.g., &ldquo;Genesis 1:1&rdquo;)
+                </div>
+              )}
+              {sourceResults.map((s, i) => (
                 <div key={i} className="search-result">
                   <div>
-                    <div className="source-cite">{s.cite}</div>
-                    <div className="source-heb" style={{ fontSize: 18, marginBottom: 4 }}>{s.heb}</div>
-                    <div className="source-en" style={{ fontSize: 14 }}>{s.en}</div>
-                    <div className="mono" style={{ fontSize: 9, color: 'var(--ink-4)', marginTop: 6 }}>{s.lib}</div>
+                    <div className="source-cite">{s.ref}</div>
+                    {s.heRef && <div className="mono" style={{ fontSize: 9, color: 'var(--ink-4)', marginBottom: 4 }}>{s.heRef}</div>}
+                    {s.he && <div className="source-heb" style={{ fontSize: 18, marginBottom: 4 }}>{s.he.substring(0, 200)}{s.he.length > 200 ? '...' : ''}</div>}
+                    {s.en && <div className="source-en" style={{ fontSize: 14 }}>{s.en.substring(0, 200)}{s.en.length > 200 ? '...' : ''}</div>}
+                    {s.categories?.length > 0 && <div className="mono" style={{ fontSize: 9, color: 'var(--ink-4)', marginTop: 6 }}>{s.categories.join(' › ')}</div>}
                   </div>
-                  <button className="btn small primary">Attach</button>
+                  <button className="btn small primary" onClick={async () => {
+                    if (openFileId) {
+                      await fetch(`/api/rav/encounters/${openFileId}`, {
+                        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ appendTranscript: `\n\n[Source: ${s.ref}]\n${s.he}\n${s.en}` }),
+                      });
+                      fetchEncounters();
+                    }
+                  }}>Attach</button>
                 </div>
               ))}
             </div>

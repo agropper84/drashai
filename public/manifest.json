@@ -1,0 +1,21 @@
+{
+  "name": "Drash AI",
+  "short_name": "Drash AI",
+  "description": "Encounter Recorder & Content Generator for Rabbis",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0e7d2",
+  "theme_color": "#7a2e2a",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

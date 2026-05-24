@@ -1,9 +1,11 @@
 /**
  * Redis/KV store for Drash AI.
  * Stores user settings, encounter data, and API keys.
+ * API keys are encrypted at rest using AES-256-GCM.
  */
 
 import Redis from 'ioredis';
+import { encrypt, decrypt } from './encryption';
 
 let redis: Redis | null = null;
 
@@ -44,16 +46,24 @@ export async function setUserStatus(userId: string, status: string): Promise<voi
   await getRedis().set(`user:${userId}:status`, status);
 }
 
-// --- API Keys (per-user) ---
+// --- API Keys (per-user, encrypted at rest) ---
 
 export async function getUserElevenLabsKey(userId: string): Promise<string | null> {
-  return getRedis().get(`user:${userId}:elevenlabs-key`);
+  const val = await getRedis().get(`user:${userId}:elevenlabs-key`);
+  if (!val) return null;
+  try { return decrypt(val); } catch { return val; } // graceful fallback for plaintext
 }
 
 export async function setUserElevenLabsKey(userId: string, key: string): Promise<void> {
-  await getRedis().set(`user:${userId}:elevenlabs-key`, key);
+  await getRedis().set(`user:${userId}:elevenlabs-key`, encrypt(key));
 }
 
 export async function getUserClaudeApiKey(userId: string): Promise<string | null> {
-  return getRedis().get(`user:${userId}:claude-key`);
+  const val = await getRedis().get(`user:${userId}:claude-key`);
+  if (!val) return null;
+  try { return decrypt(val); } catch { return val; } // graceful fallback for plaintext
+}
+
+export async function setUserClaudeApiKey(userId: string, key: string): Promise<void> {
+  await getRedis().set(`user:${userId}:claude-key`, encrypt(key));
 }

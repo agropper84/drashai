@@ -1539,3 +1539,27 @@ textarea.input { font-family: 'Cormorant Garamond', serif; font-size: 16px; line
 }
 .prompt-block:focus { border-color: var(--accent); background: var(--bg-card-hi); }
 .prompt-var { color: var(--accent); font-weight: 500; }
+
+/* ============== print styles ============== */
+@media print {
+  .sidebar, .tabs, .toolbar, .aside, .btn, .nav-item, .search-row, .modal-shroud { display: none !important; }
+  .app { grid-template-columns: 1fr !important; }
+  .main-inner { padding: 20px !important; max-width: 100% !important; }
+  .composer { grid-template-columns: 1fr !important; }
+  .composer-paper { box-shadow: none !important; border: none !important; padding: 0 !important; }
+  .composer-paper::before { display: none !important; }
+  body { background: white !important; color: black !important; font-size: 14px !important; }
+  .composer-body { min-height: auto !important; }
+  .page-head, .crumb, .file-detail-head { break-after: avoid; }
+}
+
+/* ============== mobile recording ============== */
+@media (max-width: 640px) {
+  .rec-vis { height: 120px; }
+  .modal { padding: 24px 20px 20px; }
+  .modal.wide { max-width: calc(100% - 20px); }
+  .composer { grid-template-columns: 1fr !important; }
+  .file-detail-title { font-size: 36px !important; }
+  .page-title { font-size: 32px !important; }
+  .utterance { grid-template-columns: 60px 1fr; gap: 12px; }
+}

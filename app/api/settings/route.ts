@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
-import { getRedis } from '@/lib/kv';
+import { getRedis, setUserClaudeApiKey, setUserElevenLabsKey } from '@/lib/kv';
 
 // GET — fetch user settings (including API key status)
 export async function GET() {
@@ -35,14 +35,22 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const redis = getRedis();
 
-    // Handle API key separately
+    // Handle API keys separately (encrypted at rest)
     if (body.claudeApiKey !== undefined) {
       if (body.claudeApiKey) {
-        await redis.set(`user:${session.userId}:claude-key`, body.claudeApiKey);
+        await setUserClaudeApiKey(session.userId, body.claudeApiKey);
       } else {
         await redis.del(`user:${session.userId}:claude-key`);
       }
       delete body.claudeApiKey;
+    }
+    if (body.elevenlabsApiKey !== undefined) {
+      if (body.elevenlabsApiKey) {
+        await setUserElevenLabsKey(session.userId, body.elevenlabsApiKey);
+      } else {
+        await redis.del(`user:${session.userId}:elevenlabs-key`);
+      }
+      delete body.elevenlabsApiKey;
     }
 
     // Save other settings
