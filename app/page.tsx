@@ -1,69 +1,630 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-export default function HomePage() {
+// ─── Types ───────────────────────────────────────────────
+interface Encounter {
+  id: string;
+  congregantName: string;
+  date: string;
+  topic?: string;
+  type?: string;
+  typeHeb?: string;
+  status?: string;
+  sealed?: boolean;
+  transcript: string;
+  notes: string;
+  generatedContent?: { type: string; content: string; generatedAt: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+type View = 'home' | 'file' | 'settings';
+type FileTab = 'transcript' | 'draft';
+
+const FILE_TYPES = [
+  { key: 'hesped', heb: 'הספד', en: 'Eulogy' },
+  { key: 'drasha', heb: 'דרשה', en: 'Sermon' },
+  { key: 'dvar_torah', heb: 'דבר תורה', en: "D'var Torah" },
+  { key: 'bar_mitzvah', heb: 'בר/בת מצוה', en: 'Bar/Bat Mitzvah' },
+  { key: 'wedding', heb: 'נישואין', en: 'Wedding' },
+  { key: 'letter', heb: 'מכתב', en: 'Pastoral Letter' },
+  { key: 'study', heb: 'לימוד', en: 'Study Notes' },
+];
+
+const DRAFT_TYPES = [
+  { key: 'sermon', label: 'Sermon' },
+  { key: 'eulogy', label: 'Eulogy' },
+  { key: 'teaching', label: 'Teaching' },
+  { key: 'dvar_torah', label: "D'var Torah" },
+  { key: 'pastoral_letter', label: 'Pastoral Letter' },
+  { key: 'meeting_summary', label: 'Summary' },
+];
+
+// ─── SVG Icons (inline, matching design) ─────────────────
+const I = {
+  home: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><path d="M9 21V12h6v9"/></svg>,
+  scroll: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h12a2 2 0 002-2V7a2 2 0 00-2-2H8"/><path d="M4 3h4v18H4a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>,
+  settings: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>,
+  mic: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="1" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 01-14 0v-1"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,
+  plus: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  x: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  back: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
+  lock: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
+  copy: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>,
+  check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  trash: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6m4-6v6"/></svg>,
+  logout: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+};
+
+// ─── Main App ────────────────────────────────────────────
+export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [view, setView] = useState<View>('home');
+  const [openFileId, setOpenFileId] = useState<string | null>(null);
+  const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch('/api/rav/encounters')
-      .then(res => {
-        if (res.status === 401) {
-          setAuthed(false);
-        } else {
-          setAuthed(true);
-        }
-      })
-      .catch(() => setAuthed(false));
+  // Modals
+  const [showNew, setShowNew] = useState(false);
+
+  // File detail
+  const [activeTab, setActiveTab] = useState<FileTab>('transcript');
+
+  // Settings
+  const [claudeKey, setClaudeKey] = useState('');
+  const [elevenKey, setElevenKey] = useState('');
+  const [savingKeys, setSavingKeys] = useState(false);
+  const [keysSaved, setKeysSaved] = useState(false);
+  const [hasClaudeKey, setHasClaudeKey] = useState(false);
+
+  // New file form
+  const [newType, setNewType] = useState('hesped');
+  const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  // Draft generation
+  const [draftType, setDraftType] = useState('sermon');
+  const [draftInstructions, setDraftInstructions] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [streamedContent, setStreamedContent] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  // Transcript editing
+  const [transcriptDraft, setTranscriptDraft] = useState('');
+  const [notes, setNotes] = useState('');
+  const [savingField, setSavingField] = useState(false);
+  const notesTimer = useRef<NodeJS.Timeout>(undefined);
+
+  const activeFile = encounters.find(e => e.id === openFileId) || null;
+
+  // ─── Auth + Data fetch ──────────────────────────────────
+  const fetchEncounters = useCallback(async () => {
+    try {
+      const res = await fetch('/api/rav/encounters');
+      if (res.status === 401) { setAuthed(false); setLoading(false); return; }
+      setAuthed(true);
+      if (res.ok) {
+        const data = await res.json();
+        setEncounters(data.encounters || []);
+      }
+    } catch { setAuthed(false); }
+    setLoading(false);
   }, []);
 
-  // Loading
-  if (authed === null) {
+  useEffect(() => { fetchEncounters(); }, [fetchEncounters]);
+
+  useEffect(() => {
+    if (authed) {
+      fetch('/api/settings').then(r => r.ok ? r.json() : null).then(d => {
+        if (d) setHasClaudeKey(!!d.hasClaudeKey);
+      }).catch(() => {});
+    }
+  }, [authed]);
+
+  // Sync file fields
+  useEffect(() => {
+    if (activeFile) {
+      setTranscriptDraft(activeFile.transcript || '');
+      setNotes(activeFile.notes || '');
+      setStreamedContent('');
+    }
+  }, [openFileId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When opening a file, switch view
+  useEffect(() => {
+    if (openFileId) setView('file');
+  }, [openFileId]);
+
+  // ─── API helpers ────────────────────────────────────────
+  const saveField = async (field: string, value: string) => {
+    if (!openFileId) return;
+    setSavingField(true);
+    try {
+      const res = await fetch(`/api/rav/encounters/${openFileId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEncounters(prev => prev.map(e => e.id === openFileId ? data.encounter : e));
+      }
+    } catch {} finally { setSavingField(false); }
+  };
+
+  const handleNotesChange = (text: string) => {
+    setNotes(text);
+    if (notesTimer.current) clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(() => saveField('notes', text), 1000);
+  };
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return;
+    setCreating(true);
+    const typeInfo = FILE_TYPES.find(t => t.key === newType);
+    try {
+      const res = await fetch('/api/rav/encounters', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          congregantName: newName.trim(),
+          topic: typeInfo?.en,
+          type: newType,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEncounters(prev => [data.encounter, ...prev]);
+        setOpenFileId(data.encounter.id);
+        setNewName(''); setShowNew(false);
+      }
+    } catch {} finally { setCreating(false); }
+  };
+
+  const handleDelete = async (id: string) => {
+    await fetch(`/api/rav/encounters/${id}`, { method: 'DELETE' });
+    setEncounters(prev => prev.filter(e => e.id !== id));
+    if (openFileId === id) { setOpenFileId(null); setView('home'); }
+  };
+
+  const handleGenerate = async () => {
+    if (!activeFile?.transcript?.trim()) return;
+    setGenerating(true); setStreamedContent('');
+    try {
+      const res = await fetch('/api/rav/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: activeFile.transcript, notes: activeFile.notes,
+          type: draftType, instructions: draftInstructions.trim() || undefined,
+          congregantName: activeFile.congregantName,
+        }),
+      });
+      if (!res.ok) throw new Error('Generation failed');
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No stream');
+      const decoder = new TextDecoder();
+      let full = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        full += decoder.decode(value, { stream: true });
+        setStreamedContent(full.replace(/\n\n__STREAM_DONE__$/, ''));
+      }
+      full = full.replace(/\n\n__STREAM_DONE__$/, '');
+      setStreamedContent(full);
+      // Save
+      await fetch(`/api/rav/encounters/${openFileId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ addGenerated: { type: draftType, content: full, generatedAt: new Date().toISOString() } }),
+      });
+      fetchEncounters();
+    } catch (e: any) { setStreamedContent(`Error: ${e.message}`); }
+    finally { setGenerating(false); }
+  };
+
+  const handleSaveKeys = async () => {
+    setSavingKeys(true);
+    try {
+      const body: Record<string, string> = {};
+      if (claudeKey) body.claudeApiKey = claudeKey;
+      if (elevenKey) body.elevenlabsApiKey = elevenKey;
+      await fetch('/api/settings', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      setKeysSaved(true);
+      setHasClaudeKey(!!claudeKey || hasClaudeKey);
+      setTimeout(() => setKeysSaved(false), 2000);
+      setClaudeKey(''); setElevenKey('');
+    } catch {} finally { setSavingKeys(false); }
+  };
+
+  const handleCopy = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
+  };
+
+  // ─── Loading ────────────────────────────────────────────
+  if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a' }}>
-        <div style={{ width: 32, height: 32, border: '3px solid #334155', borderTopColor: '#f59e0b', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-page)' }}>
+        <div className="mono" style={{ color: 'var(--ink-3)' }}>Loading...</div>
       </div>
     );
   }
 
-  // Not authenticated — show login
+  // ─── Login ──────────────────────────────────────────────
   if (!authed) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0f172a, #1e293b, #0f172a)', fontFamily: 'system-ui, sans-serif' }}>
-        <div style={{ width: '100%', maxWidth: 380, margin: '0 16px' }}>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>Drash AI</h1>
-            <p style={{ fontSize: 14, color: '#94a3b8', marginTop: 8 }}>Encounter Recorder & Content Generator</p>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 24 }}>
-            <a
-              href="/api/auth/login"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', padding: '12px 16px', background: '#fff', color: '#0f172a', borderRadius: 12, fontWeight: 500, fontSize: 14, textDecoration: 'none' }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Sign in with Google
-            </a>
-          </div>
-          <p style={{ textAlign: 'center', fontSize: 11, color: '#64748b', marginTop: 24 }}>Secure login via Google OAuth</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-page)' }}>
+        <div style={{ width: '100%', maxWidth: 380, margin: '0 16px', textAlign: 'center' }}>
+          <div className="brand-mark" style={{ width: 56, height: 56, fontSize: 32, margin: '0 auto 16px', borderRadius: 10 }}>רב</div>
+          <h1 className="heb-display" style={{ fontSize: 36, margin: '0 0 4px' }}>דרש AI</h1>
+          <p style={{ fontSize: 15, color: 'var(--ink-2)', fontStyle: 'italic', marginBottom: 32 }}>Encounter Recorder & Content Generator</p>
+          <a href="/api/auth/login" className="btn primary" style={{ width: '100%', justifyContent: 'center', padding: '14px 20px', fontSize: 15 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Sign in with Google
+          </a>
         </div>
       </div>
     );
   }
 
-  // Authenticated — show app (placeholder until full UI is restored)
+  // ─── Main App ───────────────────────────────────────────
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#fff', fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ textAlign: 'center' }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700 }}>Drash AI</h1>
-        <p style={{ fontSize: 14, color: '#94a3b8', marginTop: 8 }}>You are logged in. Full app coming soon.</p>
-        <a href="/api/auth/logout" style={{ display: 'inline-block', marginTop: 24, padding: '8px 20px', background: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: 8, fontSize: 13, textDecoration: 'none' }}>Sign Out</a>
-      </div>
+    <div className="app">
+      {/* ─── Sidebar ─── */}
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-mark">רב</div>
+          <div className="nav-label">
+            <div className="brand-name">Drash AI</div>
+            <div className="brand-sub">דרש AI</div>
+          </div>
+        </div>
+
+        <div className="nav-section">Workspace</div>
+
+        {[
+          { key: 'home', icon: I.home, en: 'Files', heb: 'תיקים' },
+          { key: 'settings', icon: I.settings, en: 'Settings', heb: 'הגדרות' },
+        ].map(item => (
+          <button key={item.key} className={`nav-item ${view === item.key && !openFileId ? 'active' : ''}`}
+            onClick={() => { setView(item.key as View); setOpenFileId(null); }}>
+            <span className="nav-icon">{item.icon}</span>
+            <span className="nav-label">
+              <span className="en">{item.en}</span>
+              <span className="heb">{item.heb}</span>
+            </span>
+          </button>
+        ))}
+
+        {/* Recent files */}
+        {encounters.length > 0 && (
+          <>
+            <div className="nav-section" style={{ marginTop: 12 }}>Recent</div>
+            {encounters.slice(0, 3).map(enc => (
+              <button key={enc.id} className={`nav-item ${openFileId === enc.id ? 'active' : ''}`}
+                onClick={() => setOpenFileId(enc.id)}>
+                <span className="nav-icon">{I.scroll}</span>
+                <span className="nav-label">
+                  <span className="en" style={{ fontSize: 13 }}>{enc.congregantName}</span>
+                  <span style={{ fontSize: 10, color: 'var(--ink-3)' }}>{enc.topic || enc.date}</span>
+                </span>
+              </button>
+            ))}
+          </>
+        )}
+
+        <div className="sidebar-foot">
+          <a href="/api/auth/logout" className="nav-item" style={{ color: 'var(--ink-3)' }}>
+            <span className="nav-icon">{I.logout}</span>
+            <span className="nav-label"><span className="en">Sign Out</span></span>
+          </a>
+        </div>
+      </aside>
+
+      {/* ─── Main Content ─── */}
+      <main className="main">
+        <div className="main-inner">
+
+          {/* ═══ HOME SCREEN ═══ */}
+          {view === 'home' && !openFileId && (
+            <>
+              <div className="page-head">
+                <div className="page-title-wrap">
+                  <div className="page-eyebrow">Your encounters</div>
+                  <h1 className="page-title heb-display">תיקים</h1>
+                  <div className="page-title-en">Files</div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn primary" onClick={() => setShowNew(true)}>
+                    <span className="icon">{I.plus}</span> New File
+                  </button>
+                </div>
+              </div>
+
+              {encounters.length === 0 ? (
+                <div className="empty-state">
+                  <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>📜</div>
+                  <p style={{ fontSize: 18 }}>No encounters yet</p>
+                  <p style={{ fontSize: 14, marginTop: 8 }}>Create your first file to begin</p>
+                  <button className="btn primary" style={{ marginTop: 20 }} onClick={() => setShowNew(true)}>
+                    <span className="icon">{I.plus}</span> New File
+                  </button>
+                </div>
+              ) : (
+                <div className="file-grid">
+                  {encounters.map(enc => {
+                    const typeInfo = FILE_TYPES.find(t => t.key === enc.type);
+                    return (
+                      <div key={enc.id} className="card file-card" onClick={() => setOpenFileId(enc.id)}>
+                        <div className="file-type">{typeInfo?.en || enc.topic || 'Encounter'}</div>
+                        <div className="file-title-heb">{typeInfo?.heb || ''}</div>
+                        <div className="file-title-en">{enc.congregantName}</div>
+                        <div className="file-meta">
+                          <span>{enc.date}</span>
+                          <span className="dot" />
+                          {enc.transcript ? <span>{enc.transcript.split('\n').length} lines</span> : <span>No transcript</span>}
+                          {(enc.generatedContent?.length || 0) > 0 && (
+                            <span className="badge draft">{enc.generatedContent!.length} generated</span>
+                          )}
+                        </div>
+                        <button className="btn ghost small" style={{ position: 'absolute', top: 8, right: 8, minHeight: 28, minWidth: 28, padding: 4 }}
+                          onClick={e => { e.stopPropagation(); handleDelete(enc.id); }}>
+                          <span className="icon" style={{ width: 14, height: 14 }}>{I.trash}</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ═══ FILE DETAIL ═══ */}
+          {view === 'file' && activeFile && (
+            <>
+              <div className="crumb">
+                <button onClick={() => { setOpenFileId(null); setView('home'); }}>Files</button>
+                <span className="crumb-sep">›</span>
+                <span>{activeFile.congregantName}</span>
+              </div>
+
+              <div className="file-detail-head">
+                <div>
+                  <div className="page-eyebrow">{FILE_TYPES.find(t => t.key === activeFile.type)?.en || activeFile.topic || 'Encounter'}</div>
+                  <h1 className="file-detail-title">{FILE_TYPES.find(t => t.key === activeFile.type)?.heb || ''}</h1>
+                  <div className="file-detail-en">{activeFile.congregantName}</div>
+                  <div className="file-detail-meta-row">
+                    <span>{activeFile.date}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div className="tabs">
+                {[
+                  { key: 'transcript', en: 'Conversation' },
+                  { key: 'draft', en: 'Draft' },
+                ].map(tab => (
+                  <button key={tab.key} className={`tab ${activeTab === tab.key ? 'active' : ''}`}
+                    onClick={() => setActiveTab(tab.key as FileTab)}>
+                    <span className="en">{tab.en}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* ── Transcript Tab ── */}
+              {activeTab === 'transcript' && (
+                <div>
+                  <div className="section-head">
+                    <div>
+                      <h2 className="section-title">שיחה</h2>
+                      <div className="section-title-en">Conversation</div>
+                    </div>
+                  </div>
+
+                  <textarea className="input serif" rows={10} value={transcriptDraft}
+                    onChange={e => setTranscriptDraft(e.target.value)}
+                    placeholder="Paste or type the encounter transcript here..." />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                    <button className="btn primary" onClick={() => saveField('transcript', transcriptDraft)}
+                      disabled={savingField}>
+                      {savingField ? 'Saving...' : 'Save Transcript'}
+                    </button>
+                  </div>
+
+                  <hr className="divider" />
+
+                  <div className="section-head">
+                    <div>
+                      <h2 className="section-title" style={{ fontSize: 24 }}>הערות</h2>
+                      <div className="section-title-en">Private Notes</div>
+                    </div>
+                  </div>
+                  <textarea className="input serif" rows={4} value={notes}
+                    onChange={e => handleNotesChange(e.target.value)}
+                    placeholder="Your private notes, themes to explore, relevant parsha connections..." />
+                </div>
+              )}
+
+              {/* ── Draft Tab ── */}
+              {activeTab === 'draft' && (
+                <div className="composer" style={{ gridTemplateColumns: '1fr 300px' }}>
+                  <div>
+                    <div className="section-head">
+                      <div>
+                        <h2 className="section-title">טיוטה</h2>
+                        <div className="section-title-en">Draft Composer</div>
+                      </div>
+                    </div>
+
+                    {/* Generated content display */}
+                    {streamedContent ? (
+                      <div className="composer-paper">
+                        <div className="composer-body" style={{ minHeight: 200 }}>
+                          <p style={{ whiteSpace: 'pre-wrap' }}>{streamedContent}</p>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                          <button className="btn small" onClick={() => handleCopy(streamedContent)}>
+                            <span className="icon" style={{ width: 14, height: 14 }}>{copied ? I.check : I.copy}</span>
+                            {copied ? 'Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : activeFile.generatedContent?.length ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {activeFile.generatedContent.map((g, i) => (
+                          <div key={i} className="composer-paper" style={{ padding: '28px 36px' }}>
+                            <div className="mono" style={{ color: 'var(--gold)', marginBottom: 12 }}>
+                              {g.type.replace('_', ' ')} — {new Date(g.generatedAt).toLocaleDateString()}
+                            </div>
+                            <div className="composer-body" style={{ minHeight: 0 }}>
+                              <p style={{ whiteSpace: 'pre-wrap' }}>{g.content}</p>
+                            </div>
+                            <button className="btn ghost small" style={{ marginTop: 8 }} onClick={() => handleCopy(g.content)}>
+                              <span className="icon" style={{ width: 14, height: 14 }}>{I.copy}</span> Copy
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="empty-state" style={{ padding: 40 }}>
+                        <p>No drafts yet. Use the panel on the right to generate.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Aside panel */}
+                  <div className="aside">
+                    <div className="aside-card">
+                      <div className="aside-h">Generate</div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                        {DRAFT_TYPES.map(dt => (
+                          <button key={dt.key} className={`btn small ${draftType === dt.key ? 'primary' : ''}`}
+                            style={{ justifyContent: 'flex-start' }}
+                            onClick={() => setDraftType(dt.key)}>
+                            {dt.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <textarea className="input serif" rows={2} value={draftInstructions}
+                        onChange={e => setDraftInstructions(e.target.value)}
+                        placeholder="Optional instructions..." style={{ marginBottom: 12, minHeight: 60 }} />
+
+                      <button className="btn primary" style={{ width: '100%', justifyContent: 'center' }}
+                        onClick={handleGenerate}
+                        disabled={generating || !activeFile.transcript?.trim()}>
+                        {generating ? 'Generating...' : `Generate ${DRAFT_TYPES.find(d => d.key === draftType)?.label}`}
+                      </button>
+
+                      {!activeFile.transcript?.trim() && (
+                        <p style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic', marginTop: 8 }}>
+                          Add a transcript first in the Conversation tab.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ═══ SETTINGS ═══ */}
+          {view === 'settings' && (
+            <>
+              <div className="page-head">
+                <div className="page-title-wrap">
+                  <div className="page-eyebrow">Configuration</div>
+                  <h1 className="page-title heb-display">הגדרות</h1>
+                  <div className="page-title-en">Settings</div>
+                </div>
+              </div>
+
+              {/* AI Keys */}
+              <div className="settings-section">
+                <h2 className="settings-h">מפתחות AI</h2>
+                <div className="settings-h-en">API Keys</div>
+                <div className="settings-block">
+                  <div className="settings-row settings-row-stack">
+                    <div>
+                      <div className="settings-label">Anthropic (Claude)</div>
+                      <div className="settings-help">Required for generating sermons, eulogies, and other content</div>
+                    </div>
+                    <div className="key-input" style={{ marginTop: 8 }}>
+                      <input className="input" type="password" value={claudeKey}
+                        onChange={e => setClaudeKey(e.target.value)}
+                        placeholder={hasClaudeKey ? '••••••••••••••••' : 'sk-ant-...'} />
+                      <span className={`key-status ${hasClaudeKey ? 'connected' : 'empty'}`}>
+                        {hasClaudeKey ? '● Connected' : '○ Not set'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="settings-row settings-row-stack">
+                    <div>
+                      <div className="settings-label">ElevenLabs</div>
+                      <div className="settings-help">For voice transcription (Scribe v2 with diarization)</div>
+                    </div>
+                    <div className="key-input" style={{ marginTop: 8 }}>
+                      <input className="input" type="password" value={elevenKey}
+                        onChange={e => setElevenKey(e.target.value)}
+                        placeholder="xi-..." />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: 14 }}>
+                    <button className="btn primary" onClick={handleSaveKeys} disabled={savingKeys || (!claudeKey && !elevenKey)}>
+                      {keysSaved ? '✓ Saved' : savingKeys ? 'Saving...' : 'Save Keys'}
+                    </button>
+                  </div>
+                  <div className="privacy-vow" style={{ marginTop: 14 }}>
+                    <div className="privacy-vow-title">
+                      <span className="icon" style={{ width: 12, height: 12 }}>{I.lock}</span> Security
+                    </div>
+                    <p style={{ fontSize: 14 }}>API keys are stored encrypted in your account. They never leave the server and are only used to make API calls on your behalf.</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+        </div>
+      </main>
+
+      {/* ═══ NEW FILE MODAL ═══ */}
+      {showNew && (
+        <div className="modal-shroud" onClick={() => setShowNew(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-eyebrow">New encounter</div>
+            <h2 className="modal-title">תיק חדש</h2>
+            <div className="modal-title-en">Create a new file</div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
+              {FILE_TYPES.map(ft => (
+                <button key={ft.key}
+                  className={`btn small ${newType === ft.key ? 'primary' : ''}`}
+                  style={{ justifyContent: 'flex-start' }}
+                  onClick={() => setNewType(ft.key)}>
+                  <span className="heb" style={{ fontSize: 14 }}>{ft.heb}</span>
+                  <span style={{ fontSize: 12, color: newType === ft.key ? 'inherit' : 'var(--ink-3)' }}>{ft.en}</span>
+                </button>
+              ))}
+            </div>
+
+            <input className="input serif" value={newName} onChange={e => setNewName(e.target.value)}
+              placeholder="Name (e.g., Goldberg Family)" autoFocus
+              onKeyDown={e => e.key === 'Enter' && handleCreate()} />
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button className="btn ghost" onClick={() => setShowNew(false)}>Cancel</button>
+              <button className="btn primary" onClick={handleCreate} disabled={creating || !newName.trim()}>
+                {creating ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
