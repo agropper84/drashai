@@ -1,19 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
-
-interface SessionData {
-  userId: string;
-  email: string;
-  approved: boolean;
-}
-
-const sessionOptions = {
-  password: process.env.SESSION_SECRET || 'fallback-dev-secret-must-be-32-chars!!',
-  cookieName: 'drashai-session',
-};
 
 const PUBLIC_PATHS = ['/login', '/api/auth'];
 const PUBLIC_PREFIXES = ['/_next', '/icons', '/favicon', '/icon', '/apple-icon'];
+const COOKIE_NAME = 'drashai-session';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -22,19 +11,15 @@ export async function middleware(request: NextRequest) {
   if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) return NextResponse.next();
   if (PUBLIC_PREFIXES.some(p => pathname.startsWith(p))) return NextResponse.next();
 
-  // Check session
-  try {
-    const response = NextResponse.next();
-    const session = await getIronSession<SessionData>(request, response, sessionOptions);
-    if (!session.userId) {
-      if (pathname.startsWith('/api/')) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-    return response;
-  } catch {
+  // Check if session cookie exists (lightweight Edge-compatible check)
+  // The actual session validation happens in API routes via iron-session
+  const sessionCookie = request.cookies.get(COOKIE_NAME);
+  if (!sessionCookie?.value) {
     if (pathname.startsWith('/api/')) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     return NextResponse.redirect(new URL('/login', request.url));
   }
+
+  return NextResponse.next();
 }
 
 export const config = {
