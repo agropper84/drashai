@@ -99,12 +99,55 @@ export default function App() {
   const [mode, setMode] = useState('light');
 
   // Sparks (global insights)
-  const [sparks, setSparks] = useState<{ id: string; body: string; tag: string; when: string; url?: string }[]>([]);
+  const [sparks, setSparks] = useState<{ id: string; body: string; tag: string; when: string; url?: string; category?: string }[]>([]);
   const [newSpark, setNewSpark] = useState('');
   const [sparkRecording, setSparkRecording] = useState(false);
   const [sparkTranscribing, setSparkTranscribing] = useState(false);
   const sparkRecorderRef = useRef<MediaRecorder | null>(null);
   const sparkChunksRef = useRef<Blob[]>([]);
+  const [sparkSelected, setSparkSelected] = useState<Set<string>>(new Set());
+  const [editingSpark, setEditingSpark] = useState<string | null>(null);
+  const [editSparkText, setEditSparkText] = useState('');
+  const [sparkFilter, setSparkFilter] = useState('all');
+  const [sparkSearching, setSparkSearching] = useState<string | null>(null);
+
+  const SPARK_CATEGORIES = ['Uncategorized', 'Sermon', 'Eulogy', 'Teaching', 'Personal', 'Torah', 'Story', 'Quote'];
+
+  const toggleSparkSelect = (id: string) => {
+    setSparkSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const mergeSparks = () => {
+    if (sparkSelected.size < 2) return;
+    const selected = sparks.filter(s => sparkSelected.has(s.id));
+    const merged = {
+      id: crypto.randomUUID(),
+      body: selected.map(s => s.body).join('\n\n---\n\n'),
+      tag: 'Merged',
+      when: new Date().toLocaleDateString(),
+      category: selected[0].category,
+      url: selected.find(s => s.url)?.url,
+    };
+    setSparks(prev => [merged, ...prev.filter(s => !sparkSelected.has(s.id))]);
+    setSparkSelected(new Set());
+  };
+
+  const mergeSparkToFile = async (encId: string) => {
+    const selected = sparks.filter(s => sparkSelected.has(s.id));
+    if (selected.length === 0) return;
+    const text = selected.map(s => `[Spark: ${s.tag}] ${s.body}`).join('\n\n');
+    await fetch(`/api/rav/encounters/${encId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appendTranscript: '\n\n' + text }),
+    });
+    setSparks(prev => prev.filter(s => !sparkSelected.has(s.id)));
+    setSparkSelected(new Set());
+    fetchEncounters();
+  };
 
   // File detail
   const [activeTab, setActiveTab] = useState<FileTab>('transcript');
@@ -1003,6 +1046,47 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Selection actions */}
+              {sparkSelected.size > 0 && (
+                <div className="card" style={{ padding: '12px 18px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: 'var(--accent-soft)', borderColor: 'var(--accent)' }}>
+                  <span className="mono" style={{ color: 'var(--accent)' }}>{sparkSelected.size} selected</span>
+                  <div style={{ flex: 1 }} />
+                  {sparkSelected.size >= 2 && (
+                    <button className="btn small" onClick={mergeSparks}>
+                      <span className="icon" style={{ width: 14, height: 14 }}>{I.plus}</span> Merge Together
+                    </button>
+                  )}
+                  {encounters.length > 0 && (
+                    <select className="input" style={{ width: 'auto', padding: '6px 10px', fontSize: 12 }}
+                      onChange={e => { if (e.target.value) { mergeSparkToFile(e.target.value); e.target.value = ''; } }}
+                      defaultValue="">
+                      <option value="" disabled>Merge to file...</option>
+                      {encounters.map(enc => (
+                        <option key={enc.id} value={enc.id}>{enc.congregantName}</option>
+                      ))}
+                    </select>
+                  )}
+                  <button className="btn small" style={{ color: 'var(--accent)' }}
+                    onClick={() => { setSparks(prev => prev.filter(s => !sparkSelected.has(s.id))); setSparkSelected(new Set()); }}>
+                    <span className="icon" style={{ width: 14, height: 14 }}>{I.trash}</span> Delete
+                  </button>
+                  <button className="btn ghost small" onClick={() => setSparkSelected(new Set())}>Clear</button>
+                </div>
+              )}
+
+              {/* Category filter */}
+              {sparks.length > 0 && (
+                <div style={{ display: 'flex', gap: 4, marginBottom: 16, overflowX: 'auto' }}>
+                  {['all', ...SPARK_CATEGORIES].map(cat => (
+                    <button key={cat} className={`tab ${sparkFilter === cat ? 'active' : ''}`}
+                      style={{ padding: '6px 12px', fontSize: 12 }}
+                      onClick={() => setSparkFilter(cat)}>
+                      {cat === 'all' ? 'All' : cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Sparks list */}
               {sparks.length === 0 ? (
                 <div className="empty-state">
@@ -1014,20 +1098,81 @@ export default function App() {
                 </div>
               ) : (
                 <div className="insight-grid">
-                  {sparks.map(s => (
-                    <div key={s.id} className="insight-card card" onClick={() => {
-                      if (s.url) window.open(s.url, '_blank');
-                    }} style={{ cursor: s.url ? 'pointer' : 'default' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div className="insight-tag">{s.tag}</div>
-                        <button className="btn ghost small" style={{ minHeight: 24, minWidth: 24, padding: 2 }}
-                          onClick={(e) => { e.stopPropagation(); setSparks(prev => prev.filter(x => x.id !== s.id)); }}>
-                          <span className="icon" style={{ width: 12, height: 12 }}>{I.trash}</span>
-                        </button>
+                  {sparks
+                    .filter(s => sparkFilter === 'all' || (s.category || 'Uncategorized') === sparkFilter)
+                    .map(s => (
+                    <div key={s.id} className={`insight-card card ${sparkSelected.has(s.id) ? 'pin' : ''}`}
+                      style={{ cursor: 'default', border: sparkSelected.has(s.id) ? '2px solid var(--accent)' : undefined }}>
+
+                      {/* Header: checkbox + tag + actions */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <input type="checkbox" checked={sparkSelected.has(s.id)}
+                          onChange={() => toggleSparkSelect(s.id)}
+                          style={{ marginTop: 2, accentColor: 'var(--accent)' }} />
+                        <div className="insight-tag" style={{ flex: 1 }}>{s.tag}</div>
+                        <div style={{ display: 'flex', gap: 2 }}>
+                          <button className="btn ghost small" style={{ minHeight: 24, minWidth: 24, padding: 2 }}
+                            onClick={() => { setEditingSpark(s.id); setEditSparkText(s.body); }}
+                            title="Edit">
+                            <span style={{ fontSize: 11 }}>✏️</span>
+                          </button>
+                          <button className="btn ghost small" style={{ minHeight: 24, minWidth: 24, padding: 2 }}
+                            onClick={async () => {
+                              setSparkSearching(s.id);
+                              try {
+                                const keywords = s.body.split(/\s+/).filter(w => w.length > 3).slice(0, 3).join(' ');
+                                const res = await fetch(`/api/sources?q=${encodeURIComponent(keywords)}`);
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  setSourceResults(data.results || []);
+                                  setSourceQuery(keywords);
+                                  setShowSources(true);
+                                }
+                              } catch {} finally { setSparkSearching(null); }
+                            }}
+                            title="Find related sources">
+                            <span className="icon" style={{ width: 12, height: 12 }}>{sparkSearching === s.id ? '⏳' : I.search}</span>
+                          </button>
+                          <button className="btn ghost small" style={{ minHeight: 24, minWidth: 24, padding: 2 }}
+                            onClick={() => setSparks(prev => prev.filter(x => x.id !== s.id))}
+                            title="Delete">
+                            <span className="icon" style={{ width: 12, height: 12 }}>{I.trash}</span>
+                          </button>
+                        </div>
                       </div>
-                      <div className="insight-body">{s.body}</div>
+
+                      {/* Body — editable or display */}
+                      {editingSpark === s.id ? (
+                        <div>
+                          <textarea className="input serif" rows={3} value={editSparkText}
+                            onChange={e => setEditSparkText(e.target.value)} autoFocus
+                            style={{ marginBottom: 8, fontSize: 15 }} />
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn small primary" onClick={() => {
+                              setSparks(prev => prev.map(x => x.id === s.id ? { ...x, body: editSparkText } : x));
+                              setEditingSpark(null);
+                            }}>Save</button>
+                            <button className="btn ghost small" onClick={() => setEditingSpark(null)}>Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="insight-body" onClick={() => { if (s.url) window.open(s.url, '_blank'); }}
+                          style={{ cursor: s.url ? 'pointer' : 'default' }}>
+                          {s.body}
+                        </div>
+                      )}
+
                       {s.url && <div className="mono" style={{ fontSize: 9, color: 'var(--accent)', wordBreak: 'break-all' }}>{s.url.substring(0, 60)}{s.url.length > 60 ? '...' : ''}</div>}
-                      <div className="insight-foot">{s.when}</div>
+
+                      {/* Category selector + footer */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                        <select className="mono" value={s.category || 'Uncategorized'}
+                          onChange={e => setSparks(prev => prev.map(x => x.id === s.id ? { ...x, category: e.target.value } : x))}
+                          style={{ fontSize: 9, background: 'var(--bg-sunken)', border: '1px solid var(--rule-soft)', borderRadius: 3, padding: '2px 4px', color: 'var(--ink-3)', cursor: 'pointer' }}>
+                          {SPARK_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                        <div className="insight-foot">{s.when}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
