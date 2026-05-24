@@ -162,15 +162,19 @@ export default function App() {
   const [libText, setLibText] = useState<{ ref: string; heRef: string; he: string; en: string } | null>(null);
   const [libLoadingText, setLibLoadingText] = useState(false);
 
+  const [libError, setLibError] = useState('');
   const searchLibrary = async (q: string, cat?: string) => {
     if (!q.trim()) return;
-    setLibSearching(true);
+    setLibSearching(true); setLibError('');
     try {
       const params = new URLSearchParams({ q, size: '20' });
       if (cat && cat !== 'all') params.set('category', cat);
       const res = await fetch(`/api/sources?${params}`);
-      if (res.ok) { const data = await res.json(); setLibResults(data.results || []); }
-    } catch {} finally { setLibSearching(false); }
+      const data = await res.json();
+      if (data.results) { setLibResults(data.results); }
+      else { setLibError(data.error || 'No results'); setLibResults([]); }
+    } catch (e: any) { setLibError(e.message); setLibResults([]); }
+    finally { setLibSearching(false); }
   };
 
   const browseText = async (ref: string) => {
@@ -1785,6 +1789,7 @@ export default function App() {
 
               {/* Search results */}
               {libSearching && <div className="mono" style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)' }}>Searching Sefaria...</div>}
+              {libError && <div style={{ textAlign: 'center', padding: 16, color: 'var(--accent)', fontSize: 13 }}>Search error: {libError}</div>}
 
               {libResults.length > 0 && (
                 <div style={{ marginBottom: 28 }}>
