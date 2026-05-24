@@ -1,6 +1,6 @@
 {
-  "name": "Drash AI",
-  "short_name": "Drash AI",
+  "name": "Drashai",
+  "short_name": "Drashai",
   "description": "Encounter Recorder & Content Generator for Rabbis",
   "start_url": "/",
   "display": "standalone",
