@@ -110,6 +110,7 @@ export default function App() {
   const [creating, setCreating] = useState(false);
 
   // Draft generation
+  const [aiMode, setAiMode] = useState<'heavy' | 'collab' | 'light'>('collab');
   const [draftType, setDraftType] = useState('sermon');
   const [draftInstructions, setDraftInstructions] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -405,16 +406,18 @@ export default function App() {
                     const typeInfo = FILE_TYPES.find(t => t.key === enc.type);
                     return (
                       <div key={enc.id} className="card file-card" onClick={() => setOpenFileId(enc.id)}>
-                        <div className="file-type">{typeInfo?.en || enc.topic || 'Encounter'}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div className="file-type">{typeInfo?.en || enc.topic || 'Encounter'}</div>
+                          {enc.sealed && <span className="badge sealed"><span className="icon" style={{ width: 11, height: 11 }}>{I.lock}</span> Sealed</span>}
+                          {(enc.generatedContent?.length || 0) > 0 && !enc.sealed && <span className="badge draft">Draft</span>}
+                        </div>
                         <div className="file-title-heb">{typeInfo?.heb || ''}</div>
                         <div className="file-title-en">{enc.congregantName}</div>
                         <div className="file-meta">
+                          <div className={`status-dot ${enc.generatedContent?.length ? 'active' : ''}`} />
                           <span>{enc.date}</span>
                           <span className="dot" />
                           {enc.transcript ? <span>{enc.transcript.split('\n').length} lines</span> : <span>No transcript</span>}
-                          {(enc.generatedContent?.length || 0) > 0 && (
-                            <span className="badge draft">{enc.generatedContent!.length} generated</span>
-                          )}
                         </div>
                         <button className="btn ghost small" style={{ position: 'absolute', top: 8, right: 8, minHeight: 28, minWidth: 28, padding: 4 }}
                           onClick={e => { e.stopPropagation(); handleDelete(enc.id); }}>
@@ -473,11 +476,35 @@ export default function App() {
                       <h2 className="section-title">שיחה</h2>
                       <div className="section-title-en">Conversation</div>
                     </div>
+                    <button className="btn small" onClick={() => { setShowRec(true); setRecPhase('vow'); setRecConsent(false); setRecTranscript(''); }}>
+                      <span className="icon">{I.mic}</span> Record
+                    </button>
                   </div>
 
-                  <textarea className="input serif" rows={10} value={transcriptDraft}
+                  {/* Display formatted transcript if it has speaker labels */}
+                  {activeFile.transcript && activeFile.transcript.includes(':') ? (
+                    <div className="transcript" style={{ marginBottom: 20 }}>
+                      {activeFile.transcript.split('\n').filter(l => l.trim()).map((line, i) => {
+                        const colonIdx = line.indexOf(':');
+                        const hasSpeaker = colonIdx > 0 && colonIdx < 30;
+                        const speaker = hasSpeaker ? line.substring(0, colonIdx).trim() : '';
+                        const text = hasSpeaker ? line.substring(colonIdx + 1).trim() : line;
+                        return (
+                          <div key={i} className="utterance">
+                            <div className="utterance-time">{String(Math.floor(i * 0.5)).padStart(2, '0')}:{String((i * 30) % 60).padStart(2, '0')}</div>
+                            <div>
+                              {speaker && <span className="utterance-speaker">{speaker}</span>}
+                              <div className="utterance-text">{text}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
+                  <textarea className="input serif" rows={8} value={transcriptDraft}
                     onChange={e => setTranscriptDraft(e.target.value)}
-                    placeholder="Paste or type the encounter transcript here..." />
+                    placeholder="Paste or type the encounter transcript here...&#10;&#10;Format with speaker labels:&#10;Rabbi: How are you feeling today?&#10;David: We've been thinking a lot about mom..." />
                   <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                     <button className="btn primary" onClick={() => saveField('transcript', transcriptDraft)}
                       disabled={savingField}>
@@ -501,56 +528,92 @@ export default function App() {
 
               {/* ── Draft Tab ── */}
               {activeTab === 'draft' && (
-                <div className="composer" style={{ gridTemplateColumns: '1fr 300px' }}>
+                <div className="composer">
                   <div>
-                    <div className="section-head">
-                      <div>
-                        <h2 className="section-title">טיוטה</h2>
-                        <div className="section-title-en">Draft Composer</div>
-                      </div>
+                    {/* Toolbar */}
+                    <div className="toolbar">
+                      <button className="icon-btn" title="Bold"><span className="icon" style={{ width: 16, height: 16, fontWeight: 700, fontFamily: 'serif', fontSize: 14 }}>B</span></button>
+                      <button className="icon-btn" title="Italic"><span className="icon" style={{ width: 16, height: 16, fontStyle: 'italic', fontFamily: 'serif', fontSize: 14 }}>I</span></button>
+                      <button className="icon-btn" title="Block Quote"><span className="icon" style={{ width: 16, height: 16, fontSize: 14 }}>&ldquo;</span></button>
+                      <div className="divider-v" />
+                      <button className="icon-btn" title="Hebrew text"><span className="icon heb" style={{ width: 16, height: 16, fontSize: 13 }}>עב</span></button>
+                      <button className="icon-btn" title="Insert source"><span className="icon" style={{ width: 16, height: 16 }}>{I.book}</span></button>
+                      <div style={{ flex: 1 }} />
+                      <button className="btn ghost small" onClick={() => handleCopy(streamedContent || activeFile.generatedContent?.[activeFile.generatedContent.length - 1]?.content || '')}>
+                        <span className="icon" style={{ width: 14, height: 14 }}>{I.copy}</span> Copy
+                      </button>
                     </div>
 
-                    {/* Generated content display */}
+                    {/* Composer paper */}
                     {streamedContent ? (
-                      <div className="composer-paper">
-                        <div className="composer-body" style={{ minHeight: 200 }}>
-                          <p style={{ whiteSpace: 'pre-wrap' }}>{streamedContent}</p>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                          <button className="btn small" onClick={() => handleCopy(streamedContent)}>
-                            <span className="icon" style={{ width: 14, height: 14 }}>{copied ? I.check : I.copy}</span>
-                            {copied ? 'Copied' : 'Copy'}
-                          </button>
+                      <div className="composer-paper grain" style={{ position: 'relative' }}>
+                        <h2 className="composer-h heb-display">{FILE_TYPES.find(t => t.key === activeFile.type)?.heb || 'טיוטה'}</h2>
+                        <div className="composer-h-en">{activeFile.congregantName}</div>
+                        <div className="composer-body">
+                          {streamedContent.split('\n\n').map((para, i) => (
+                            <p key={i} className={i === 0 ? 'first-cap' : ''} style={{ whiteSpace: 'pre-wrap' }}>{para}</p>
+                          ))}
                         </div>
                       </div>
                     ) : activeFile.generatedContent?.length ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {activeFile.generatedContent.map((g, i) => (
-                          <div key={i} className="composer-paper" style={{ padding: '28px 36px' }}>
-                            <div className="mono" style={{ color: 'var(--gold)', marginBottom: 12 }}>
+                          <div key={i} className="composer-paper grain" style={{ position: 'relative' }}>
+                            <div className="mono" style={{ color: 'var(--gold)', marginBottom: 16, textAlign: 'center' }}>
                               {g.type.replace('_', ' ')} — {new Date(g.generatedAt).toLocaleDateString()}
                             </div>
-                            <div className="composer-body" style={{ minHeight: 0 }}>
-                              <p style={{ whiteSpace: 'pre-wrap' }}>{g.content}</p>
+                            <div className="composer-body">
+                              {g.content.split('\n\n').map((para, j) => (
+                                <p key={j} className={j === 0 ? 'first-cap' : ''} style={{ whiteSpace: 'pre-wrap' }}>{para}</p>
+                              ))}
                             </div>
-                            <button className="btn ghost small" style={{ marginTop: 8 }} onClick={() => handleCopy(g.content)}>
-                              <span className="icon" style={{ width: 14, height: 14 }}>{I.copy}</span> Copy
-                            </button>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
+                              <button className="btn ghost small" onClick={() => handleCopy(g.content)}>
+                                <span className="icon" style={{ width: 14, height: 14 }}>{I.copy}</span> Copy
+                              </button>
+                              <button className="btn ghost small" onClick={() => window.print()}>
+                                <span className="icon" style={{ width: 14, height: 14 }}>{I.print}</span> Print
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="empty-state" style={{ padding: 40 }}>
-                        <p>No drafts yet. Use the panel on the right to generate.</p>
+                      <div className="composer-paper grain" style={{ position: 'relative' }}>
+                        <div className="empty-state" style={{ padding: 60 }}>
+                          <p style={{ fontSize: 18 }}>Begin writing, or generate from the panel →</p>
+                        </div>
                       </div>
                     )}
                   </div>
 
                   {/* Aside panel */}
                   <div className="aside">
+                    {/* AI Mode */}
+                    <div className="aside-card">
+                      <div className="aside-h">AI Assist</div>
+                      <div className="ai-modes">
+                        {[
+                          { key: 'heavy', ico: '🤖', label: 'Heavy' },
+                          { key: 'collab', ico: '🤝', label: 'Collab' },
+                          { key: 'light', ico: '✍️', label: 'Light' },
+                        ].map(m => (
+                          <button key={m.key} className={`ai-mode ${aiMode === m.key ? 'active' : ''}`}
+                            onClick={() => setAiMode(m.key as typeof aiMode)}>
+                            <span className="ico">{m.ico}</span>{m.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="ai-status">
+                        {aiMode === 'heavy' ? 'AI drafts fully, you refine and approve' :
+                         aiMode === 'collab' ? 'You write together — AI suggests, you decide' :
+                         'You write, AI assists only when asked'}
+                      </div>
+                    </div>
+
+                    {/* Generate */}
                     <div className="aside-card">
                       <div className="aside-h">Generate</div>
-
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
                         {DRAFT_TYPES.map(dt => (
                           <button key={dt.key} className={`btn small ${draftType === dt.key ? 'primary' : ''}`}
@@ -560,17 +623,14 @@ export default function App() {
                           </button>
                         ))}
                       </div>
-
                       <textarea className="input serif" rows={2} value={draftInstructions}
                         onChange={e => setDraftInstructions(e.target.value)}
-                        placeholder="Optional instructions..." style={{ marginBottom: 12, minHeight: 60 }} />
-
+                        placeholder="Focus on themes of..." style={{ marginBottom: 12, minHeight: 60 }} />
                       <button className="btn primary" style={{ width: '100%', justifyContent: 'center' }}
                         onClick={handleGenerate}
                         disabled={generating || !activeFile.transcript?.trim()}>
                         {generating ? 'Generating...' : `Generate ${DRAFT_TYPES.find(d => d.key === draftType)?.label}`}
                       </button>
-
                       {!activeFile.transcript?.trim() && (
                         <p style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic', marginTop: 8 }}>
                           Add a transcript first in the Conversation tab.
@@ -778,7 +838,12 @@ export default function App() {
                   <div className="settings-row settings-row-stack">
                     <div>
                       <div className="settings-label">Anthropic (Claude)</div>
-                      <div className="settings-help">Required for generating sermons, eulogies, and other content</div>
+                      <div className="settings-help">
+                        Required for generating sermons, eulogies, and other content.{' '}
+                        <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>
+                          Get your API key →
+                        </a>
+                      </div>
                     </div>
                     <div className="key-input" style={{ marginTop: 8 }}>
                       <input className="input" type="password" value={claudeKey}
@@ -792,7 +857,12 @@ export default function App() {
                   <div className="settings-row settings-row-stack">
                     <div>
                       <div className="settings-label">ElevenLabs</div>
-                      <div className="settings-help">For voice transcription (Scribe v2 with diarization)</div>
+                      <div className="settings-help">
+                        For voice transcription (Scribe v2 with speaker diarization).{' '}
+                        <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>
+                          Get your API key →
+                        </a>
+                      </div>
                     </div>
                     <div className="key-input" style={{ marginTop: 8 }}>
                       <input className="input" type="password" value={elevenKey}
@@ -847,6 +917,32 @@ export default function App() {
                       ))}
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Prompts */}
+              <div className="settings-section">
+                <h2 className="settings-h">הנחיות</h2>
+                <div className="settings-h-en">Prompts</div>
+                <div className="settings-block">
+                  <p style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 16 }}>
+                    Customize the AI prompts used for each document type. Use <code className="mono" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--bg-sunken)', borderRadius: 3 }}>{'{{transcript}}'}</code> for the conversation and <code className="mono" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--bg-sunken)', borderRadius: 3 }}>{'{{subject}}'}</code> for the congregant name.
+                  </p>
+                  {[
+                    { label: 'Eulogy (Hesped)', key: 'hesped' },
+                    { label: 'Sermon (Drasha)', key: 'drasha' },
+                    { label: 'Source Finding', key: 'sources' },
+                    { label: 'Pastoral Letter', key: 'letter' },
+                  ].map(p => (
+                    <div key={p.key} style={{ marginBottom: 16 }}>
+                      <div className="settings-label" style={{ marginBottom: 6 }}>{p.label}</div>
+                      <div className="prompt-block" contentEditable suppressContentEditableWarning
+                        style={{ minHeight: 60 }}>
+                        {'Based on the following encounter transcript with {{subject}}, create a ' + p.label.toLowerCase() + ' that draws on themes from the conversation and incorporates relevant Torah references...'}
+                      </div>
+                    </div>
+                  ))}
+                  <button className="btn ghost small" style={{ marginTop: 4 }}>Restore defaults</button>
                 </div>
               </div>
 
