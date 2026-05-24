@@ -99,8 +99,12 @@ export default function App() {
   const [mode, setMode] = useState('light');
 
   // Sparks (global insights)
-  const [sparks, setSparks] = useState<{ id: string; body: string; tag: string; when: string }[]>([]);
+  const [sparks, setSparks] = useState<{ id: string; body: string; tag: string; when: string; url?: string }[]>([]);
   const [newSpark, setNewSpark] = useState('');
+  const [sparkRecording, setSparkRecording] = useState(false);
+  const [sparkTranscribing, setSparkTranscribing] = useState(false);
+  const sparkRecorderRef = useRef<MediaRecorder | null>(null);
+  const sparkChunksRef = useRef<Blob[]>([]);
 
   // File detail
   const [activeTab, setActiveTab] = useState<FileTab>('transcript');
@@ -864,30 +868,165 @@ export default function App() {
                   <h1 className="page-title heb-display">ניצוצות</h1>
                   <div className="page-title-en">Sparks</div>
                 </div>
-                <button className="btn primary" onClick={() => {
-                  if (newSpark.trim()) {
-                    setSparks(prev => [{ id: crypto.randomUUID(), body: newSpark, tag: 'Thought', when: new Date().toLocaleDateString() }, ...prev]);
-                    setNewSpark('');
-                  }
-                }}>
-                  <span className="icon">{I.plus}</span> Capture
-                </button>
               </div>
-              <div style={{ marginBottom: 20 }}>
-                <textarea className="input serif" rows={2} value={newSpark} onChange={e => setNewSpark(e.target.value)}
-                  placeholder="A fleeting thought, a connection, an image that spoke to you..." />
+
+              {/* Capture area */}
+              <div className="card" style={{ padding: 22, marginBottom: 20 }}>
+                <textarea className="input serif" rows={3} value={newSpark} onChange={e => setNewSpark(e.target.value)}
+                  placeholder="A fleeting thought, a connection, an image that spoke to you..." style={{ marginBottom: 12 }} />
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {/* Text capture */}
+                  <button className="btn primary" onClick={() => {
+                    if (newSpark.trim()) {
+                      setSparks(prev => [{ id: crypto.randomUUID(), body: newSpark, tag: 'Thought', when: new Date().toLocaleDateString() }, ...prev]);
+                      setNewSpark('');
+                    }
+                  }} disabled={!newSpark.trim()}>
+                    <span className="icon">{I.plus}</span> Capture
+                  </button>
+
+                  {/* Voice note (dictation) */}
+                  <button className={`btn ${sparkRecording ? 'primary' : ''}`}
+                    disabled={sparkTranscribing}
+                    onClick={async () => {
+                      if (sparkRecording) {
+                        // Stop
+                        const recorder = sparkRecorderRef.current;
+                        if (recorder) {
+                          recorder.stop();
+                          recorder.stream.getTracks().forEach(t => t.stop());
+                          sparkRecorderRef.current = null;
+                          setSparkRecording(false);
+                          setSparkTranscribing(true);
+                          const blob = new Blob(sparkChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+                          sparkChunksRef.current = [];
+                          try {
+                            const fd = new FormData();
+                            fd.append('audio', blob, 'spark-dictation.webm');
+                            fd.append('mode', 'dictation');
+                            const res = await fetch('/api/transcribe-elevenlabs', { method: 'POST', body: fd });
+                            if (res.ok) {
+                              const data = await res.json();
+                              if (data.text) {
+                                setSparks(prev => [{ id: crypto.randomUUID(), body: data.text, tag: 'Voice Note', when: new Date().toLocaleDateString() }, ...prev]);
+                              }
+                            }
+                          } catch {} finally { setSparkTranscribing(false); }
+                        }
+                      } else {
+                        // Start
+                        try {
+                          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                          const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/mp4';
+                          const recorder = new MediaRecorder(stream, { mimeType });
+                          sparkChunksRef.current = [];
+                          recorder.ondataavailable = (e) => { if (e.data.size > 0) sparkChunksRef.current.push(e.data); };
+                          recorder.start(1000);
+                          sparkRecorderRef.current = recorder;
+                          setSparkRecording(true);
+                        } catch { setNewSpark(prev => prev + '\n[Microphone access denied]'); }
+                      }
+                    }}>
+                    <span className="icon">{sparkRecording ? I.stop : I.mic}</span>
+                    {sparkTranscribing ? 'Transcribing...' : sparkRecording ? 'Stop & Save' : 'Voice Note'}
+                  </button>
+
+                  {/* URL */}
+                  <button className="btn" onClick={() => {
+                    const url = prompt('Paste a URL (article, teaching, video):');
+                    if (url?.trim()) {
+                      setSparks(prev => [{ id: crypto.randomUUID(), body: url.trim(), tag: 'Link', when: new Date().toLocaleDateString(), url: url.trim() }, ...prev]);
+                    }
+                  }}>
+                    <span className="icon" style={{ width: 16, height: 16 }}>🔗</span> URL
+                  </button>
+
+                  {/* File upload (PDF, image, screenshot) */}
+                  <label className="btn" style={{ cursor: 'pointer' }}>
+                    <span className="icon">{I.doc}</span> Upload
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx,.txt" style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const form = new FormData();
+                        form.append('file', file);
+                        form.append('encounterId', 'sparks');
+                        try {
+                          const res = await fetch('/api/upload-document', { method: 'POST', body: form });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setSparks(prev => [{
+                              id: crypto.randomUUID(),
+                              body: `📎 ${file.name} (${(file.size / 1024).toFixed(1)}KB)`,
+                              tag: file.type.startsWith('image/') ? 'Screenshot' : 'Document',
+                              when: new Date().toLocaleDateString(),
+                              url: data.url,
+                            }, ...prev]);
+                          }
+                        } catch {}
+                        e.target.value = '';
+                      }} />
+                  </label>
+
+                  {/* Screenshot (clipboard paste) */}
+                  <button className="btn" onClick={async () => {
+                    try {
+                      const items = await navigator.clipboard.read();
+                      for (const item of items) {
+                        const imageType = item.types.find(t => t.startsWith('image/'));
+                        if (imageType) {
+                          const blob = await item.getType(imageType);
+                          const form = new FormData();
+                          form.append('file', blob, `screenshot-${Date.now()}.png`);
+                          form.append('encounterId', 'sparks');
+                          const res = await fetch('/api/upload-document', { method: 'POST', body: form });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setSparks(prev => [{
+                              id: crypto.randomUUID(),
+                              body: '📸 Screenshot captured',
+                              tag: 'Screenshot',
+                              when: new Date().toLocaleDateString(),
+                              url: data.url,
+                            }, ...prev]);
+                          }
+                          return;
+                        }
+                      }
+                      const text = await navigator.clipboard.readText();
+                      if (text) setNewSpark(prev => prev ? prev + '\n' + text : text);
+                    } catch { alert('Clipboard access denied. Try pasting with ⌘V instead.'); }
+                  }}>
+                    <span className="icon" style={{ width: 16, height: 16 }}>📋</span> Paste
+                  </button>
+                </div>
               </div>
+
+              {/* Sparks list */}
               {sparks.length === 0 ? (
                 <div className="empty-state">
                   <p style={{ fontSize: 18 }}>Your sparks inbox is empty</p>
                   <p style={{ fontSize: 14, marginTop: 8 }}>Capture ideas, fragments, and connections before they fade</p>
+                  <p style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 16 }}>
+                    💡 Type a thought • 🎤 Record a voice note • 🔗 Save a URL • 📎 Upload a file • 📋 Paste a screenshot
+                  </p>
                 </div>
               ) : (
                 <div className="insight-grid">
                   {sparks.map(s => (
-                    <div key={s.id} className="insight-card card">
-                      <div className="insight-tag">{s.tag}</div>
+                    <div key={s.id} className="insight-card card" onClick={() => {
+                      if (s.url) window.open(s.url, '_blank');
+                    }} style={{ cursor: s.url ? 'pointer' : 'default' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div className="insight-tag">{s.tag}</div>
+                        <button className="btn ghost small" style={{ minHeight: 24, minWidth: 24, padding: 2 }}
+                          onClick={(e) => { e.stopPropagation(); setSparks(prev => prev.filter(x => x.id !== s.id)); }}>
+                          <span className="icon" style={{ width: 12, height: 12 }}>{I.trash}</span>
+                        </button>
+                      </div>
                       <div className="insight-body">{s.body}</div>
+                      {s.url && <div className="mono" style={{ fontSize: 9, color: 'var(--accent)', wordBreak: 'break-all' }}>{s.url.substring(0, 60)}{s.url.length > 60 ? '...' : ''}</div>}
                       <div className="insight-foot">{s.when}</div>
                     </div>
                   ))}
