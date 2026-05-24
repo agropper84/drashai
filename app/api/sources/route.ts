@@ -25,32 +25,38 @@ export async function GET(req: NextRequest) {
 
     if (!q.trim()) return NextResponse.json({ results: [] });
 
-    // 1. Try direct reference lookup (e.g., "Genesis 1:1")
-    try {
-      const refUrl = `https://www.sefaria.org/api/texts/${encodeURIComponent(q)}?context=0&pad=0`;
-      const refRes = await fetch(refUrl);
-      if (refRes.ok) {
-        const data = await refRes.json();
-        if (data.ref && (data.he || data.text)) {
+    // 1. Try direct reference lookup only if query looks like a ref (contains numbers or known book names)
+    const looksLikeRef = /\d/.test(q) || /^(Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Psalms|Proverbs|Isaiah|Jeremiah|Ezekiel|Job|Ecclesiastes|Song of Songs|Ruth|Lamentations|Daniel|Esther|Nehemiah|Chronicles|Samuel|Kings|Joshua|Judges|Pirkei Avot|Mishnah|Berakhot|Shabbat|Sanhedrin)/i.test(q);
+    if (looksLikeRef) {
+      try {
+        const refUrl = `https://www.sefaria.org/api/texts/${encodeURIComponent(q)}?context=0&pad=0`;
+        const refRes = await fetch(refUrl);
+        if (refRes.ok) {
+          const data = await refRes.json();
           const flat = (v: any): string => {
             if (!v) return '';
             if (typeof v === 'string') return v.replace(/<[^>]*>/g, '');
             if (Array.isArray(v)) return v.map(flat).filter(Boolean).join(' ');
             return '';
           };
-          return NextResponse.json({
-            results: [{
-              ref: data.ref,
-              heRef: data.heRef || '',
-              he: flat(data.he),
-              en: flat(data.text),
-              categories: data.categories || [],
-            }],
-          });
+          const heText = flat(data.he);
+          const enText = flat(data.text);
+          // Only return if we got actual text content
+          if (data.ref && (heText.length > 10 || enText.length > 10)) {
+            return NextResponse.json({
+              results: [{
+                ref: data.ref,
+                heRef: data.heRef || '',
+                he: heText,
+                en: enText,
+                categories: data.categories || [],
+              }],
+            });
+          }
         }
+      } catch (e) {
+        console.log('[Sources] Ref lookup failed, trying search:', e);
       }
-    } catch (e) {
-      console.log('[Sources] Ref lookup failed, trying search:', e);
     }
 
     // 2. Topic/keyword search
