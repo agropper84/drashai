@@ -9,8 +9,8 @@ let redis: Redis | null = null;
 
 export function getRedis(): Redis {
   if (!redis) {
-    const url = process.env.REDIS_URL || process.env.KV_URL;
-    if (!url) throw new Error('REDIS_URL not set');
+    const url = process.env.REDIS_URL || process.env.KV_URL || process.env.KV_REST_API_URL;
+    if (!url) throw new Error('Redis not configured. Add a Vercel KV store to this project.');
     redis = new Redis(url, {
       maxRetriesPerRequest: 3,
       connectTimeout: 5000,

@@ -8,7 +8,7 @@ interface SessionData {
 }
 
 const sessionOptions = {
-  password: process.env.SESSION_SECRET as string,
+  password: process.env.SESSION_SECRET || 'fallback-dev-secret-must-be-32-chars!!',
   cookieName: 'drashai-session',
 };
 
