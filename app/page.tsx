@@ -530,7 +530,7 @@ export default function App() {
 
               {encounters.length === 0 ? (
                 <div className="empty-state">
-                  <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>📜</div>
+                  <div className="heb-display" style={{ fontSize: 48, marginBottom: 12, opacity: 0.2 }}>רב</div>
                   <p style={{ fontSize: 18 }}>No encounters yet</p>
                   <p style={{ fontSize: 14, marginTop: 8 }}>Create your first file to begin</p>
                   <button className="btn primary" style={{ marginTop: 20 }} onClick={() => setShowNew(true)}>
@@ -731,9 +731,9 @@ export default function App() {
                       <div className="aside-h">AI Assist</div>
                       <div className="ai-modes">
                         {[
-                          { key: 'heavy', ico: '🤖', label: 'Heavy' },
-                          { key: 'collab', ico: '🤝', label: 'Collab' },
-                          { key: 'light', ico: '✍️', label: 'Light' },
+                          { key: 'heavy', ico: '◆', label: 'Heavy' },
+                          { key: 'collab', ico: '◇', label: 'Collab' },
+                          { key: 'light', ico: '○', label: 'Light' },
                         ].map(m => (
                           <button key={m.key} className={`ai-mode ${aiMode === m.key ? 'active' : ''}`}
                             onClick={() => setAiMode(m.key as typeof aiMode)}>
@@ -1003,7 +1003,7 @@ export default function App() {
                       setSparks(prev => [{ id: crypto.randomUUID(), body: url.trim(), tag: 'Link', when: new Date().toLocaleDateString(), url: url.trim() }, ...prev]);
                     }
                   }}>
-                    <span className="icon" style={{ width: 16, height: 16 }}>🔗</span> URL
+                    <span className="icon" style={{ width: 16, height: 16 }}>{I.search}</span> URL
                   </button>
 
                   {/* File upload (PDF, image, screenshot) */}
@@ -1022,7 +1022,7 @@ export default function App() {
                             const data = await res.json();
                             setSparks(prev => [{
                               id: crypto.randomUUID(),
-                              body: `📎 ${file.name} (${(file.size / 1024).toFixed(1)}KB)`,
+                              body: `${file.name} (${(file.size / 1024).toFixed(1)}KB)`,
                               tag: file.type.startsWith('image/') ? 'Screenshot' : 'Document',
                               when: new Date().toLocaleDateString(),
                               url: data.url,
@@ -1049,7 +1049,7 @@ export default function App() {
                             const data = await res.json();
                             setSparks(prev => [{
                               id: crypto.randomUUID(),
-                              body: '📸 Screenshot captured',
+                              body: 'Screenshot captured',
                               tag: 'Screenshot',
                               when: new Date().toLocaleDateString(),
                               url: data.url,
@@ -1062,7 +1062,7 @@ export default function App() {
                       if (text) setNewSpark(prev => prev ? prev + '\n' + text : text);
                     } catch { alert('Clipboard access denied. Try pasting with ⌘V instead.'); }
                   }}>
-                    <span className="icon" style={{ width: 16, height: 16 }}>📋</span> Paste
+                    <span className="icon">{I.copy}</span> Paste
                   </button>
                 </div>
               </div>
@@ -1114,7 +1114,7 @@ export default function App() {
                   <p style={{ fontSize: 18 }}>Your sparks inbox is empty</p>
                   <p style={{ fontSize: 14, marginTop: 8 }}>Capture ideas, fragments, and connections before they fade</p>
                   <p style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 16 }}>
-                    💡 Type a thought • 🎤 Record a voice note • 🔗 Save a URL • 📎 Upload a file • 📋 Paste a screenshot
+                    Type a thought · Record a voice note · Save a URL · Upload a file · Paste a screenshot
                   </p>
                 </div>
               ) : (
@@ -1135,7 +1135,7 @@ export default function App() {
                           <button className="btn ghost small" style={{ minHeight: 24, minWidth: 24, padding: 2 }}
                             onClick={() => { setEditingSpark(s.id); setEditSparkText(s.body); }}
                             title="Edit">
-                            <span style={{ fontSize: 11 }}>✏️</span>
+                            <span className="icon" style={{ width: 12, height: 12, fontSize: 11 }}>✎</span>
                           </button>
                           <button className="btn ghost small" style={{ minHeight: 24, minWidth: 24, padding: 2 }}
                             onClick={async () => {
@@ -1152,7 +1152,7 @@ export default function App() {
                               } catch {} finally { setSparkSearching(null); }
                             }}
                             title="Find related sources">
-                            <span className="icon" style={{ width: 12, height: 12 }}>{sparkSearching === s.id ? '⏳' : I.search}</span>
+                            <span className="icon" style={{ width: 12, height: 12 }}>{I.search}</span>
                           </button>
                           <button className="btn ghost small" style={{ minHeight: 24, minWidth: 24, padding: 2 }}
                             onClick={() => setSparks(prev => prev.filter(x => x.id !== s.id))}
@@ -1449,7 +1449,7 @@ export default function App() {
                     <div className="mode-toggle">
                       {['light', 'dark', 'auto'].map(m => (
                         <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
-                          {m === 'light' ? '☀' : m === 'dark' ? '🌙' : '⚙'} {m.charAt(0).toUpperCase() + m.slice(1)}
+                          {m.charAt(0).toUpperCase() + m.slice(1)}
                         </button>
                       ))}
                     </div>
@@ -1710,7 +1710,7 @@ export default function App() {
 
             <div style={{ marginTop: 16, padding: 12, background: 'var(--bg-sunken)', borderRadius: 6 }}>
               <p style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>
-                🔍 AI will suggest sources based on themes detected in your conversation transcript
+                AI will suggest sources based on themes detected in your conversation transcript
               </p>
             </div>
 
