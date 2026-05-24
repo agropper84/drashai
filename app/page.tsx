@@ -19,8 +19,8 @@ interface Encounter {
   updatedAt: string;
 }
 
-type View = 'home' | 'file' | 'settings';
-type FileTab = 'transcript' | 'draft';
+type View = 'home' | 'file' | 'settings' | 'sparks' | 'templates' | 'library';
+type FileTab = 'transcript' | 'documents' | 'sources' | 'insights' | 'draft' | 'final';
 
 const FILE_TYPES = [
   { key: 'hesped', heb: 'הספד', en: 'Eulogy' },
@@ -55,6 +55,17 @@ const I = {
   check: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
   trash: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6m4-6v6"/></svg>,
   logout: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+  spark: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L9 12l-7 1 5.5 5L6 22l6-4 6 4-1.5-4L22 13l-7-1z"/></svg>,
+  book: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>,
+  templ: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>,
+  doc: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+  pause: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>,
+  play: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+  stop: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>,
+  search: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  pin: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17v5M5 17h14l-1.5-6.5a1 1 0 00-1-.5H7.5a1 1 0 00-1 .5z"/><path d="M15 4L9 4l-1 6h8z"/></svg>,
+  share: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+  print: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,
 };
 
 // ─── Main App ────────────────────────────────────────────
@@ -67,6 +78,21 @@ export default function App() {
 
   // Modals
   const [showNew, setShowNew] = useState(false);
+  const [showRec, setShowRec] = useState(false);
+  const [recPhase, setRecPhase] = useState<'vow' | 'recording' | 'review'>('vow');
+  const [recConsent, setRecConsent] = useState(false);
+  const [recTranscript, setRecTranscript] = useState('');
+  const [recPaused, setRecPaused] = useState(false);
+  const [recTime, setRecTime] = useState(0);
+  const recTimerRef = useRef<NodeJS.Timeout>(undefined);
+
+  // Theme
+  const [theme, setTheme] = useState('warm');
+  const [mode, setMode] = useState('light');
+
+  // Sparks (global insights)
+  const [sparks, setSparks] = useState<{ id: string; body: string; tag: string; when: string }[]>([]);
+  const [newSpark, setNewSpark] = useState('');
 
   // File detail
   const [activeTab, setActiveTab] = useState<FileTab>('transcript');
@@ -135,6 +161,21 @@ export default function App() {
   useEffect(() => {
     if (openFileId) setView('file');
   }, [openFileId]);
+
+  // Theme switching
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (mode !== 'auto') document.documentElement.setAttribute('data-mode', mode);
+    else document.documentElement.removeAttribute('data-mode');
+  }, [theme, mode]);
+
+  // Recording timer
+  const startRecTimer = () => {
+    setRecTime(0);
+    recTimerRef.current = setInterval(() => setRecTime(t => t + 1), 1000);
+  };
+  const stopRecTimer = () => { if (recTimerRef.current) clearInterval(recTimerRef.current); };
+  const fmtTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   // ─── API helpers ────────────────────────────────────────
   const saveField = async (field: string, value: string) => {
@@ -286,6 +327,9 @@ export default function App() {
 
         {[
           { key: 'home', icon: I.home, en: 'Files', heb: 'תיקים' },
+          { key: 'sparks', icon: I.spark, en: 'Sparks', heb: 'ניצוצות' },
+          { key: 'templates', icon: I.templ, en: 'Templates', heb: 'תבניות' },
+          { key: 'library', icon: I.book, en: 'Library', heb: 'ספרייה' },
           { key: 'settings', icon: I.settings, en: 'Settings', heb: 'הגדרות' },
         ].map(item => (
           <button key={item.key} className={`nav-item ${view === item.key && !openFileId ? 'active' : ''}`}
@@ -337,6 +381,9 @@ export default function App() {
                   <div className="page-title-en">Files</div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn" onClick={() => { setShowRec(true); setRecPhase('vow'); setRecConsent(false); setRecTranscript(''); }}>
+                    <span className="icon">{I.mic}</span> Quick Record
+                  </button>
                   <button className="btn primary" onClick={() => setShowNew(true)}>
                     <span className="icon">{I.plus}</span> New File
                   </button>
@@ -404,8 +451,12 @@ export default function App() {
               {/* Tabs */}
               <div className="tabs">
                 {[
-                  { key: 'transcript', en: 'Conversation' },
-                  { key: 'draft', en: 'Draft' },
+                  { key: 'transcript', en: 'Conversation', heb: 'שיחה' },
+                  { key: 'documents', en: 'Documents', heb: 'מסמכים' },
+                  { key: 'sources', en: 'Sources', heb: 'מקורות' },
+                  { key: 'insights', en: 'Insights', heb: 'ניצוצות' },
+                  { key: 'draft', en: 'Draft', heb: 'טיוטה' },
+                  { key: 'final', en: 'Final', heb: 'סופי' },
                 ].map(tab => (
                   <button key={tab.key} className={`tab ${activeTab === tab.key ? 'active' : ''}`}
                     onClick={() => setActiveTab(tab.key as FileTab)}>
@@ -529,6 +580,182 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {/* ── Documents Tab ── */}
+              {activeTab === 'documents' && (
+                <div>
+                  <div className="section-head">
+                    <div><h2 className="section-title">מסמכים</h2><div className="section-title-en">Documents</div></div>
+                    <button className="btn small"><span className="icon">{I.plus}</span> Upload</button>
+                  </div>
+                  <div className="dropzone">
+                    <span className="icon" style={{ width: 32, height: 32, display: 'block', margin: '0 auto 8px', color: 'var(--ink-3)' }}>{I.doc}</span>
+                    <p style={{ fontSize: 15 }}>Drop files here or click to upload</p>
+                    <p style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>PDFs, photos, notes, condolence letters</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Sources Tab ── */}
+              {activeTab === 'sources' && (
+                <div>
+                  <div className="section-head">
+                    <div><h2 className="section-title">מקורות</h2><div className="section-title-en">Sources</div></div>
+                    <button className="btn small"><span className="icon">{I.search}</span> Find Source</button>
+                  </div>
+                  <div className="empty-state" style={{ padding: 40 }}>
+                    <p style={{ fontSize: 18 }}>No sources linked yet</p>
+                    <p style={{ fontSize: 14, marginTop: 8 }}>Search Torah, Talmud, Midrash and personal library to attach relevant texts</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Insights Tab ── */}
+              {activeTab === 'insights' && (
+                <div>
+                  <div className="section-head">
+                    <div><h2 className="section-title">ניצוצות</h2><div className="section-title-en">Insights & Sparks</div></div>
+                    <button className="btn small"><span className="icon">{I.plus}</span> New Spark</button>
+                  </div>
+                  <div className="empty-state" style={{ padding: 40 }}>
+                    <p style={{ fontSize: 18 }}>No sparks yet for this file</p>
+                    <p style={{ fontSize: 14, marginTop: 8 }}>Capture insights, themes, and ideas as you work</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Final Tab ── */}
+              {activeTab === 'final' && (
+                <div>
+                  <div className="section-head">
+                    <div><h2 className="section-title">סופי</h2><div className="section-title-en">Final Version</div></div>
+                  </div>
+                  {activeFile.generatedContent?.length ? (
+                    <div>
+                      <div className="composer-paper" style={{ maxWidth: '60ch', margin: '0 auto' }}>
+                        <div className="composer-body" style={{ minHeight: 200 }}>
+                          <p style={{ whiteSpace: 'pre-wrap' }}>{activeFile.generatedContent[activeFile.generatedContent.length - 1].content}</p>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20 }}>
+                        <button className="btn" onClick={() => handleCopy(activeFile.generatedContent![activeFile.generatedContent!.length - 1].content)}>
+                          <span className="icon">{I.copy}</span> Copy
+                        </button>
+                        <button className="btn" onClick={() => window.print()}>
+                          <span className="icon">{I.print}</span> Print
+                        </button>
+                        <button className="btn">
+                          <span className="icon">{I.share}</span> Share
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="empty-state" style={{ padding: 40 }}>
+                      <p style={{ fontSize: 18 }}>No final version yet</p>
+                      <p style={{ fontSize: 14, marginTop: 8 }}>Generate a draft first, then mark it as final</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ═══ SPARKS SCREEN ═══ */}
+          {view === 'sparks' && !openFileId && (
+            <>
+              <div className="page-head">
+                <div className="page-title-wrap">
+                  <div className="page-eyebrow">Capture before it fades</div>
+                  <h1 className="page-title heb-display">ניצוצות</h1>
+                  <div className="page-title-en">Sparks</div>
+                </div>
+                <button className="btn primary" onClick={() => {
+                  if (newSpark.trim()) {
+                    setSparks(prev => [{ id: crypto.randomUUID(), body: newSpark, tag: 'Thought', when: new Date().toLocaleDateString() }, ...prev]);
+                    setNewSpark('');
+                  }
+                }}>
+                  <span className="icon">{I.plus}</span> Capture
+                </button>
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <textarea className="input serif" rows={2} value={newSpark} onChange={e => setNewSpark(e.target.value)}
+                  placeholder="A fleeting thought, a connection, an image that spoke to you..." />
+              </div>
+              {sparks.length === 0 ? (
+                <div className="empty-state">
+                  <p style={{ fontSize: 18 }}>Your sparks inbox is empty</p>
+                  <p style={{ fontSize: 14, marginTop: 8 }}>Capture ideas, fragments, and connections before they fade</p>
+                </div>
+              ) : (
+                <div className="insight-grid">
+                  {sparks.map(s => (
+                    <div key={s.id} className="insight-card card">
+                      <div className="insight-tag">{s.tag}</div>
+                      <div className="insight-body">{s.body}</div>
+                      <div className="insight-foot">{s.when}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ═══ TEMPLATES SCREEN ═══ */}
+          {view === 'templates' && !openFileId && (
+            <>
+              <div className="page-head">
+                <div className="page-title-wrap">
+                  <div className="page-eyebrow">Document structures</div>
+                  <h1 className="page-title heb-display">תבניות</h1>
+                  <div className="page-title-en">Templates</div>
+                </div>
+              </div>
+              <div className="template-grid">
+                {[
+                  { heb: 'הספד', en: 'Eulogy (Hesped)', sections: 'Opening, Life story, Character, Torah, Closing', desc: 'A framework for honoring the departed' },
+                  { heb: 'דרשה', en: 'Sermon (Drasha)', sections: 'Hook, Text, Teaching, Application, Call', desc: 'Shabbat or holiday sermon structure' },
+                  { heb: 'דבר תורה', en: "D'var Torah", sections: 'Text, Question, Insight, Connection', desc: 'Concise Torah teaching' },
+                  { heb: 'בר/בת מצוה', en: 'Bar/Bat Mitzvah', sections: 'Welcome, Torah portion, Personal, Blessing', desc: 'Coming of age celebration' },
+                  { heb: 'נישואין', en: 'Wedding Remarks', sections: 'Couple story, Torah, Blessings, Charge', desc: 'Under the chuppah' },
+                  { heb: 'מכתב', en: 'Pastoral Letter', sections: 'Greeting, Acknowledgment, Guidance, Blessing', desc: 'Condolence or pastoral care' },
+                  { heb: 'לימוד', en: 'Study Notes', sections: 'Source, Analysis, Questions, Application', desc: 'Personal learning journal' },
+                ].map((t, i) => (
+                  <div key={i} className="card template-card">
+                    <div className="template-name">{t.heb}</div>
+                    <div className="template-en">{t.en}</div>
+                    <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.4 }}>{t.desc}</p>
+                    <div className="template-sections">{t.sections}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* ═══ LIBRARY SCREEN ═══ */}
+          {view === 'library' && !openFileId && (
+            <>
+              <div className="page-head">
+                <div className="page-title-wrap">
+                  <div className="page-eyebrow">Texts & references</div>
+                  <h1 className="page-title heb-display">ספרייה</h1>
+                  <div className="page-title-en">Library</div>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+                <div className="card" style={{ padding: 22 }}>
+                  <div className="mono" style={{ color: 'var(--gold)', marginBottom: 8 }}>Sefaria</div>
+                  <p style={{ fontSize: 20, fontWeight: 600 }}>Jewish Texts</p>
+                  <p style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 6 }}>Search Torah, Talmud, Midrash, and more via Sefaria&apos;s library</p>
+                  <button className="btn small" style={{ marginTop: 12 }}><span className="icon">{I.search}</span> Search</button>
+                </div>
+                <div className="card" style={{ padding: 22 }}>
+                  <div className="mono" style={{ color: 'var(--gold)', marginBottom: 8 }}>Personal</div>
+                  <p style={{ fontSize: 20, fontWeight: 600 }}>My Library</p>
+                  <p style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 6 }}>Your uploaded notes, books, and personal source collection</p>
+                  <button className="btn small" style={{ marginTop: 12 }}><span className="icon">{I.plus}</span> Upload</button>
+                </div>
+              </div>
             </>
           )}
 
@@ -586,11 +813,182 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {/* Appearance */}
+              <div className="settings-section">
+                <h2 className="settings-h">מראה</h2>
+                <div className="settings-h-en">Appearance</div>
+                <div className="settings-block">
+                  <div className="settings-label" style={{ marginBottom: 12 }}>Theme</div>
+                  <div className="theme-grid">
+                    {[
+                      { key: 'warm', label: 'Warm', sub: 'Parchment & oxblood', colors: ['#f0e7d2', '#7a2e2a', '#a87a2c'] },
+                      { key: 'cool', label: 'Cool', sub: 'Stone & slate', colors: ['#e8ebf0', '#2f4866', '#6d6a4a'] },
+                      { key: 'sacred', label: 'Sacred', sub: 'Deep night & gold', colors: ['#1b2038', '#d4a955', '#8aa07a'] },
+                    ].map(t => (
+                      <button key={t.key} className={`theme-card ${theme === t.key ? 'active' : ''}`}
+                        onClick={() => setTheme(t.key)}>
+                        <div className="theme-card-preview" style={{ display: 'flex' }}>
+                          {t.colors.map((c, i) => <div key={i} style={{ flex: 1, background: c }} />)}
+                        </div>
+                        <div className="theme-card-label">{t.label}</div>
+                        <div className="theme-card-sub">{t.sub}</div>
+                        {theme === t.key && <span className="check" style={{ position: 'absolute', top: 10, right: 10, width: 16, height: 16 }}>{I.check}</span>}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 16 }}>
+                    <div className="settings-label" style={{ marginBottom: 8 }}>Mode</div>
+                    <div className="mode-toggle">
+                      {['light', 'dark', 'auto'].map(m => (
+                        <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
+                          {m === 'light' ? '☀' : m === 'dark' ? '🌙' : '⚙'} {m.charAt(0).toUpperCase() + m.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Privacy */}
+              <div className="settings-section">
+                <h2 className="settings-h">חיסיון</h2>
+                <div className="settings-h-en">Privacy</div>
+                <div className="settings-block">
+                  <div className="settings-row">
+                    <div>
+                      <div className="settings-label">Apply pastoral seal by default</div>
+                      <div className="settings-help">New encounters are sealed automatically</div>
+                    </div>
+                    <div className="mode-toggle"><button className="active">On</button><button>Off</button></div>
+                  </div>
+                  <div className="settings-row">
+                    <div>
+                      <div className="settings-label">Auto-redact names on export</div>
+                      <div className="settings-help">Replace congregant names with initials when sharing</div>
+                    </div>
+                    <div className="mode-toggle"><button className="active">On</button><button>Off</button></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account */}
+              <div className="settings-section">
+                <h2 className="settings-h">חשבון</h2>
+                <div className="settings-h-en">Account</div>
+                <div className="settings-block">
+                  <div className="settings-row">
+                    <div>
+                      <div className="settings-label">Signed in</div>
+                      <div className="settings-help">via Google OAuth</div>
+                    </div>
+                    <a href="/api/auth/logout" className="btn small" style={{ color: 'var(--accent)' }}>Sign Out</a>
+                  </div>
+                </div>
+              </div>
             </>
           )}
 
         </div>
       </main>
+
+      {/* ═══ RECORDING MODAL ═══ */}
+      {showRec && (
+        <div className="modal-shroud" onClick={() => { setShowRec(false); stopRecTimer(); }}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            {/* Vow Phase */}
+            {recPhase === 'vow' && (
+              <>
+                <div className="modal-eyebrow">Pastoral recording</div>
+                <h2 className="modal-title">הקלטה</h2>
+                <div className="modal-title-en">Begin Recording</div>
+                <div className="privacy-vow">
+                  <div className="privacy-vow-title">
+                    <span className="icon" style={{ width: 12, height: 12 }}>{I.lock}</span> Pastoral Seal
+                  </div>
+                  <p>This recording is made in the context of pastoral care. It is sealed and will be stored securely on your device only.</p>
+                  <span className="heb-quote">לֹא תֵלֵךְ רָכִיל בְּעַמֶּיךָ</span>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, fontSize: 14, color: 'var(--ink-1)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={recConsent} onChange={e => setRecConsent(e.target.checked)} />
+                  I have informed the participant(s) that this conversation is being recorded
+                </label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
+                  <button className="btn ghost" onClick={() => setShowRec(false)}>Cancel</button>
+                  <button className="btn primary" disabled={!recConsent}
+                    onClick={() => { setRecPhase('recording'); startRecTimer(); }}>
+                    <span className="icon">{I.mic}</span> Begin
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Recording Phase */}
+            {recPhase === 'recording' && (
+              <>
+                <div className="modal-eyebrow">Recording in progress</div>
+                <div className={`rec-vis ${recPaused ? 'paused' : ''}`}>
+                  <div className="rec-time">{fmtTime(recTime)}</div>
+                  <div className="rec-rec-pill"><span className="dot" /> REC</div>
+                  <div className="rec-waveform">
+                    {Array.from({ length: 48 }).map((_, i) => (
+                      <div key={i} className="rec-bar" style={{ height: `${20 + Math.random() * 80}%`, animationDelay: `${i * 0.05}s` }} />
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <textarea className="input serif" rows={4} value={recTranscript}
+                    onChange={e => setRecTranscript(e.target.value)}
+                    placeholder="Live transcript will appear here... (or type/paste)" />
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'space-between' }}>
+                  <button className="btn" onClick={() => setRecPaused(!recPaused)}>
+                    <span className="icon">{recPaused ? I.play : I.pause}</span> {recPaused ? 'Resume' : 'Pause'}
+                  </button>
+                  <button className="btn primary" onClick={() => { stopRecTimer(); setRecPhase('review'); }}>
+                    <span className="icon">{I.stop}</span> End & Save
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Review Phase */}
+            {recPhase === 'review' && (
+              <>
+                <div className="modal-eyebrow">Recording complete</div>
+                <h2 className="modal-title">הוקלט</h2>
+                <div className="modal-title-en">Sealed & Saved</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
+                  <span className="badge sealed"><span className="icon">{I.lock}</span> Sealed on device</span>
+                  <span className="mono" style={{ color: 'var(--ink-3)' }}>{fmtTime(recTime)}</span>
+                </div>
+                {recTranscript && (
+                  <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+                    <p style={{ fontSize: 14, color: 'var(--ink-2)', whiteSpace: 'pre-wrap' }}>
+                      {recTranscript.substring(0, 200)}{recTranscript.length > 200 ? '...' : ''}
+                    </p>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button className="btn ghost" onClick={() => setShowRec(false)}>Close</button>
+                  {openFileId && recTranscript && (
+                    <button className="btn primary" onClick={async () => {
+                      await fetch(`/api/rav/encounters/${openFileId}`, {
+                        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ appendTranscript: recTranscript }),
+                      });
+                      fetchEncounters();
+                      setShowRec(false);
+                    }}>
+                      Save to File
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ═══ NEW FILE MODAL ═══ */}
       {showNew && (
