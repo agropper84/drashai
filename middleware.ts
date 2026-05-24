@@ -1,27 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/api/auth'];
-const PUBLIC_PREFIXES = ['/_next', '/icons', '/favicon', '/icon', '/apple-icon'];
-const COOKIE_NAME = 'drashai-session';
-
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip public paths
-  if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) return NextResponse.next();
-  if (PUBLIC_PREFIXES.some(p => pathname.startsWith(p))) return NextResponse.next();
+  // Public paths — no auth needed
+  if (
+    pathname === '/login' ||
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname === '/icon.svg'
+  ) {
+    return NextResponse.next();
+  }
 
-  // Check if session cookie exists (lightweight Edge-compatible check)
-  // The actual session validation happens in API routes via iron-session
-  const sessionCookie = request.cookies.get(COOKIE_NAME);
-  if (!sessionCookie?.value) {
-    if (pathname.startsWith('/api/')) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  // Check for session cookie
+  const cookie = request.cookies.get('drashai-session');
+  if (!cookie) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();
 }
-
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-};
