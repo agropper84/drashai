@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const session = await getSessionFromCookies();
     if (!session.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const { transcript, notes, type, instructions, congregantName, customPrompt, templateBody, styleExcerpts, sparkContext, sourcesContext } = await req.json();
+    const { transcript, notes, type, instructions, congregantName, customPrompt, templateBody, styleExcerpts, sparkContext, sourcesContext, userDraft, preserveLevel } = await req.json();
 
     if (!transcript?.trim()) {
       return NextResponse.json({ error: 'Transcript is required' }, { status: 400 });
@@ -74,6 +74,16 @@ export async function POST(req: NextRequest) {
     if (sourcesContext) contextSections += `\nATTACHED TORAH/TALMUD SOURCES (incorporate these references):\n${sourcesContext}\n`;
     if (styleExcerpts) contextSections += `\nSTYLE REFERENCE (match this tone, voice, and structure):\n${styleExcerpts}\n`;
     if (templateBody) contextSections += `\nTEMPLATE STRUCTURE (follow this skeleton, filling in content):\n${templateBody}\n`;
+    if (userDraft) {
+      const preserveMap: Record<number, string> = {
+        1: 'Use the draft below as loose inspiration only. You may restructure, rewrite, and expand freely.',
+        2: 'Preserve the key ideas and themes from the draft below, but improve the language, structure, and flow significantly.',
+        3: 'Keep the core structure and voice of the draft below. Improve, expand, and polish while maintaining the author\'s intent.',
+        4: 'Preserve most of the draft below closely. Only refine language, fix errors, and fill gaps. Keep the author\'s voice intact.',
+        5: 'Keep the draft below almost exactly as written. Only fix obvious errors and complete any unfinished thoughts.',
+      };
+      contextSections += `\nRABBI'S OWN DRAFT (${preserveMap[preserveLevel || 3]}):\n${userDraft}\n`;
+    }
 
     const userPrompt = `${basePrompt}
 
