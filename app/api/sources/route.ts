@@ -1,10 +1,6 @@
 /**
  * Sefaria API proxy — search Jewish texts
  * Uses Sefaria's free public API (no key required)
- *
- * Two modes:
- * 1. Text search: POST to Sefaria's Elasticsearch endpoint for topic/keyword search
- * 2. Ref lookup: GET from Sefaria's texts API for direct references (Genesis 1:1)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -28,125 +24,76 @@ export async function GET(req: NextRequest) {
 
     if (!q.trim()) return NextResponse.json({ results: [] });
 
-    // First try direct reference lookup (e.g., "Genesis 1:1", "Psalms 23")
-    const refRes = await fetch(`https://www.sefaria.org/api/v3/texts/${encodeURIComponent(q)}?version=primary&language=bilingual`, {
-      headers: { 'Accept': 'application/json' },
-    }).catch(() => null);
-
-    if (refRes?.ok) {
-      const data = await refRes.json();
-      if (data.versions && data.versions.length > 0) {
-        // It's a valid ref — extract text
-        const heText = data.versions.find((v: any) => v.language === 'he')?.text;
-        const enText = data.versions.find((v: any) => v.language === 'en')?.text;
-
-        const flattenText = (t: any): string => {
-          if (!t) return '';
-          if (typeof t === 'string') return t.replace(/<[^>]*>/g, '');
-          if (Array.isArray(t)) return t.map(flattenText).filter(Boolean).join(' ');
-          return '';
-        };
-
-        const results = [{
-          ref: data.ref || q,
-          heRef: data.heRef || '',
-          he: flattenText(heText),
-          en: flattenText(enText),
-          categories: data.categories || [],
-        }];
-
-        // If it's a chapter/section, also get the index for related texts
-        return NextResponse.json({ results });
+    // 1. Try direct reference lookup first (e.g., "Genesis 1:1", "Psalms 23")
+    try {
+      const refRes = await fetch(
+        `https://www.sefaria.org/api/texts/${encodeURIComponent(q)}?context=0&pad=0`,
+        { signal: AbortSignal.timeout(5000) }
+      );
+      if (refRes.ok) {
+        const data = await refRes.json();
+        if (data.ref && (data.he || data.text)) {
+          const flatJoin = (v: any): string => {
+            if (!v) return '';
+            if (typeof v === 'string') return v.replace(/<[^>]*>/g, '');
+            if (Array.isArray(v)) return v.map(flatJoin).filter(Boolean).join(' ');
+            return '';
+          };
+          return NextResponse.json({
+            results: [{
+              ref: data.ref,
+              heRef: data.heRef || '',
+              he: flatJoin(data.he),
+              en: flatJoin(data.text),
+              categories: data.categories || [],
+            }],
+          });
+        }
       }
-    }
+    } catch {} // Not a valid ref — fall through to search
 
-    // Topic/keyword search via Sefaria search API
-    const searchBody = {
+    // 2. Topic/keyword search via Sefaria search API
+    const searchBody: Record<string, any> = {
       query: q,
       type: 'text',
       field: 'naive_lemmatizer',
       size,
       sort_type: 'relevance',
-      ...(category && CATEGORY_FILTERS[category] ? { applied_filters: CATEGORY_FILTERS[category] } : {}),
     };
+    if (category && CATEGORY_FILTERS[category]) {
+      searchBody.applied_filters = CATEGORY_FILTERS[category];
+    }
 
     const searchRes = await fetch('https://www.sefaria.org/api/search-wrapper', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(searchBody),
+      signal: AbortSignal.timeout(10000),
     });
 
     if (!searchRes.ok) {
-      // Fallback: try the older GET search endpoint
-      const fallbackUrl = `https://www.sefaria.org/api/search/text/${encodeURIComponent(q)}?size=${size}`;
-      const fallbackRes = await fetch(fallbackUrl);
-      if (fallbackRes.ok) {
-        const data = await fallbackRes.json();
-        const hits = data.hits?.hits || [];
-        return NextResponse.json({
-          results: hits.map((hit: any) => {
-            const src = hit._source || {};
-            return {
-              ref: src.ref || '',
-              heRef: src.heRef || '',
-              he: (src.exact || src.naive_lemmatizer || '').replace(/<[^>]*>/g, ''),
-              en: '',
-              categories: src.path ? src.path.split('/') : [],
-            };
-          }).filter((r: any) => r.ref),
-        });
-      }
+      console.error('[Sources] Sefaria search failed:', searchRes.status);
       return NextResponse.json({ results: [] });
     }
 
     const data = await searchRes.json();
     const hits = data.hits?.hits || [];
 
-    // For each hit, try to get the English translation too
-    const results = await Promise.all(
-      hits.slice(0, size).map(async (hit: any) => {
-        const src = hit._source || {};
-        const heText = (src.exact || src.naive_lemmatizer || '').replace(/<[^>]*>/g, '');
-        const ref = src.ref || '';
+    const results = hits.map((hit: any) => {
+      const src = hit._source || {};
+      const highlight = hit.highlight?.naive_lemmatizer?.[0] || hit.highlight?.exact?.[0] || '';
+      return {
+        ref: src.ref || '',
+        heRef: src.heRef || '',
+        he: (src.exact || src.naive_lemmatizer || '').replace(/<[^>]*>/g, '').substring(0, 400),
+        en: highlight.replace(/<\/?b>/g, '').replace(/<[^>]*>/g, '').substring(0, 400),
+        categories: src.path ? src.path.split('/') : [],
+      };
+    }).filter((r: any) => r.ref);
 
-        // Try to fetch English translation for this ref
-        let enText = '';
-        if (ref) {
-          try {
-            const textRes = await fetch(`https://www.sefaria.org/api/v3/texts/${encodeURIComponent(ref)}?version=primary&language=en`, {
-              signal: AbortSignal.timeout(3000),
-            });
-            if (textRes.ok) {
-              const textData = await textRes.json();
-              const enVersion = textData.versions?.find((v: any) => v.language === 'en');
-              if (enVersion?.text) {
-                const flat = (t: any): string => {
-                  if (typeof t === 'string') return t.replace(/<[^>]*>/g, '');
-                  if (Array.isArray(t)) return t.map(flat).filter(Boolean).join(' ');
-                  return '';
-                };
-                enText = flat(enVersion.text);
-                // Truncate long texts
-                if (enText.length > 500) enText = enText.substring(0, 500) + '...';
-              }
-            }
-          } catch {} // timeout/error — just skip English
-        }
-
-        return {
-          ref,
-          heRef: src.heRef || '',
-          he: heText.length > 500 ? heText.substring(0, 500) + '...' : heText,
-          en: enText,
-          categories: src.path ? src.path.split('/') : [],
-          highlight: hit.highlight?.exact?.[0]?.replace(/<[^>]*>/g, '') || '',
-        };
-      })
-    );
-
-    return NextResponse.json({ results: results.filter((r: any) => r.ref) });
+    return NextResponse.json({ results });
   } catch (e: any) {
-    console.error('[Sources] Sefaria error:', e.message);
+    console.error('[Sources] Error:', e.message);
     return NextResponse.json({ results: [], error: e.message });
   }
 }
