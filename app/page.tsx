@@ -157,16 +157,42 @@ export default function App() {
   const [libQuery, setLibQuery] = useState('');
   const [libResults, setLibResults] = useState<{ ref: string; heRef: string; he: string; en: string; categories: string[] }[]>([]);
   const [libSearching, setLibSearching] = useState(false);
-  const [libSaved, setLibSaved] = useState<{ ref: string; he: string; en: string; savedAt: string; url?: string; type?: string }[]>([]);
+  const [libSaved, setLibSaved] = useState<{ ref: string; he: string; en: string; savedAt: string; url?: string; type?: string; folder?: string }[]>([]);
   const [libBrowse, setLibBrowse] = useState<string | null>(null);
   const [libText, setLibText] = useState<{ ref: string; heRef: string; he: string; en: string } | null>(null);
   const [libLoadingText, setLibLoadingText] = useState(false);
+  const [libFolders, setLibFolders] = useState<string[]>(['General', 'Sermons', 'Eulogies', 'Teachings']);
+  const [libActiveFolder, setLibActiveFolder] = useState<string | null>(null);
+  const [suggestedSearches, setSuggestedSearches] = useState([
+    { label: 'Love', q: 'love' },
+    { label: 'Mourning', q: 'mourning' },
+    { label: 'Justice', q: 'justice' },
+    { label: 'Kindness', q: 'kindness' },
+    { label: 'Faith', q: 'faith' },
+    { label: 'Shabbat', q: 'shabbat' },
+    { label: 'Repentance', q: 'repentance' },
+    { label: 'Peace', q: 'peace' },
+    { label: 'Wisdom', q: 'wisdom' },
+    { label: 'Gratitude', q: 'gratitude' },
+  ]);
+  const [showAllSuggested, setShowAllSuggested] = useState(false);
 
   const [libError, setLibError] = useState('');
   const searchLibrary = async (q: string, cat?: string) => {
     if (!q.trim()) return;
     setLibSearching(true); setLibError(''); setLibResults([]);
     try {
+      // Personal sources search (client-side filter)
+      if (cat === 'personal') {
+        const qLower = q.toLowerCase();
+        const matched = libSaved.filter(s =>
+          s.ref.toLowerCase().includes(qLower) || s.he.toLowerCase().includes(qLower) || s.en.toLowerCase().includes(qLower)
+        ).map(s => ({ ref: s.ref, heRef: '', he: s.he, en: s.en, categories: [s.type || 'personal'] }));
+        if (matched.length > 0) setLibResults(matched);
+        else setLibError(`No personal sources match "${q}"`);
+        setLibSearching(false);
+        return;
+      }
       const params = new URLSearchParams({ q, size: '20' });
       if (cat && cat !== 'all') params.set('category', cat);
       const res = await fetch(`/api/sources?${params}`);
@@ -1683,55 +1709,44 @@ export default function App() {
                   <h1 className="page-title heb-display">ספרייה</h1>
                   <div className="page-title-en">Library</div>
                 </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <label className="btn small" style={{ cursor: 'pointer' }}>
+                    <span className="icon">{I.doc}</span> Upload
+                    <input type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: 'none' }}
+                      onChange={async e => {
+                        const file = e.target.files?.[0]; if (!file) return;
+                        const form = new FormData(); form.append('file', file); form.append('encounterId', 'library');
+                        try {
+                          const res = await fetch('/api/upload-document', { method: 'POST', body: form });
+                          if (res.ok) {
+                            const data = await res.json();
+                            let excerpt = ''; if (file.name.endsWith('.txt')) excerpt = await file.text().then(t => t.substring(0, 300));
+                            setLibSaved(prev => [{ ref: file.name, he: '', en: excerpt || `Uploaded (${(file.size/1024).toFixed(1)}KB)`, savedAt: new Date().toISOString(), url: data.url, type: 'upload', folder: 'General' }, ...prev]);
+                          }
+                        } catch {} e.target.value = '';
+                      }} />
+                  </label>
+                  <button className="btn small" onClick={() => { const url = prompt('Paste a URL:'); if (url?.trim()) setLibSaved(prev => [{ ref: url.trim().substring(0, 60), he: '', en: url.trim(), savedAt: new Date().toISOString(), url: url.trim(), type: 'url', folder: 'General' }, ...prev]); }}>
+                    <span className="icon">{I.search}</span> URL
+                  </button>
+                </div>
               </div>
 
-              {/* Search + Add */}
+              {/* Search */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                 <form className="search-row" style={{ flex: 1, marginBottom: 0 }} onSubmit={e => { e.preventDefault(); searchLibrary(libQuery, libBrowse || undefined); }}>
                   <input className="search-input" value={libQuery} onChange={e => setLibQuery(e.target.value)}
                     placeholder="Search — topic (love, mourning), keyword (hesed), or reference (Genesis 1:1)..." />
-                  <button type="submit" className="btn primary" disabled={libSearching}>
-                    <span className="icon">{I.search}</span>
-                  </button>
+                  <button type="submit" className="btn primary" disabled={libSearching}><span className="icon">{I.search}</span></button>
                 </form>
-                <label className="btn" style={{ cursor: 'pointer', flexShrink: 0 }}>
-                  <span className="icon">{I.doc}</span> Upload
-                  <input type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: 'none' }}
-                    onChange={async e => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const form = new FormData();
-                      form.append('file', file);
-                      form.append('encounterId', 'library');
-                      try {
-                        const res = await fetch('/api/upload-document', { method: 'POST', body: form });
-                        if (res.ok) {
-                          const data = await res.json();
-                          let excerpt = '';
-                          if (file.name.endsWith('.txt')) excerpt = await file.text().then(t => t.substring(0, 300));
-                          setLibSaved(prev => [{
-                            ref: file.name, he: '', en: excerpt || `Uploaded document (${(file.size / 1024).toFixed(1)}KB)`,
-                            savedAt: new Date().toISOString(), url: data.url, type: 'upload',
-                          }, ...prev]);
-                        }
-                      } catch {}
-                      e.target.value = '';
-                    }} />
-                </label>
-                <button className="btn" style={{ flexShrink: 0 }} onClick={() => {
-                  const url = prompt('Paste a URL to a source, article, or teaching:');
-                  if (url?.trim()) {
-                    setLibSaved(prev => [{
-                      ref: url.trim().length > 50 ? url.trim().substring(0, 50) + '...' : url.trim(),
-                      he: '', en: url.trim(), savedAt: new Date().toISOString(), url: url.trim(), type: 'url',
-                    }, ...prev]);
-                  }
-                }}>
-                  <span className="icon">{I.search}</span> URL
-                </button>
+                {libQuery && (
+                  <button className="btn ghost small" onClick={() => { setLibQuery(''); setLibResults([]); setLibError(''); }}>
+                    <span className="icon" style={{ width: 14, height: 14 }}>{I.x}</span> Clear
+                  </button>
+                )}
               </div>
 
-              {/* Category filters */}
+              {/* Category filters — includes Personal */}
               <div style={{ display: 'flex', gap: 4, marginBottom: 12, overflowX: 'auto' }}>
                 {[
                   { key: 'all', label: 'All' },
@@ -1739,6 +1754,7 @@ export default function App() {
                   { key: 'talmud', label: 'Talmud' },
                   { key: 'midrash', label: 'Midrash' },
                   { key: 'commentary', label: 'Commentary' },
+                  { key: 'personal', label: `My Sources (${libSaved.length})` },
                 ].map(cat => (
                   <button key={cat.key} className={`tab ${(libBrowse || 'all') === cat.key ? 'active' : ''}`}
                     style={{ padding: '6px 12px', fontSize: 12 }}
@@ -1748,26 +1764,28 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Quick topics */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap' }}>
-                {[
-                  { label: 'Love', ref: 'love' },
-                  { label: 'Mourning', ref: 'mourning' },
-                  { label: 'Justice', ref: 'justice' },
-                  { label: 'Kindness', ref: 'kindness' },
-                  { label: 'Faith', ref: 'faith' },
-                  { label: 'Peace', ref: 'peace' },
-                  { label: 'Torah', ref: 'Genesis 1' },
-                  { label: 'Psalms', ref: 'Psalms 23' },
-                  { label: 'Proverbs', ref: 'Proverbs 3' },
-                  { label: 'Pirkei Avot', ref: 'Pirkei Avot 1' },
-                ].map(b => (
-                  <button key={b.ref} className="btn small"
-                    onClick={() => { setLibQuery(b.ref); searchLibrary(b.ref); }}>
-                    {b.label}
-                  </button>
-                ))}
-              </div>
+              {/* Suggested searches — 5 initially, 10 on expand, deletable */}
+              {!libQuery && (
+                <div style={{ display: 'flex', gap: 6, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {suggestedSearches.slice(0, showAllSuggested ? 10 : 5).map((s, i) => (
+                    <div key={s.q} style={{ display: 'inline-flex', alignItems: 'center', gap: 0 }}>
+                      <button className="btn small" style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                        onClick={() => { setLibQuery(s.q); searchLibrary(s.q); }}>
+                        {s.label}
+                      </button>
+                      <button className="btn ghost small" style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, padding: '6px 4px', minWidth: 24, color: 'var(--ink-4)' }}
+                        onClick={() => setSuggestedSearches(prev => prev.filter((_, j) => j !== i))} title="Remove">
+                        <span className="icon" style={{ width: 10, height: 10 }}>{I.x}</span>
+                      </button>
+                    </div>
+                  ))}
+                  {suggestedSearches.length > 5 && (
+                    <button className="btn ghost small" onClick={() => setShowAllSuggested(!showAllSuggested)}>
+                      {showAllSuggested ? 'Less' : `+${suggestedSearches.length - 5} more`}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Text viewer */}
               {libText && (
@@ -1778,9 +1796,12 @@ export default function App() {
                       {libText.heRef && <div className="heb" style={{ fontSize: 14, color: 'var(--ink-3)' }}>{libText.heRef}</div>}
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn small" onClick={() => {
-                        setLibSaved(prev => [{ ref: libText.ref, he: libText.he, en: libText.en, savedAt: new Date().toISOString() }, ...prev]);
-                      }}>Save</button>
+                      <select className="input" style={{ width: 'auto', padding: '4px 8px', fontSize: 11 }}
+                        onChange={e => { if (e.target.value) { setLibSaved(prev => [{ ref: libText.ref, he: libText.he, en: libText.en, savedAt: new Date().toISOString(), folder: e.target.value }, ...prev]); e.target.value = ''; } }}
+                        defaultValue="">
+                        <option value="" disabled>Save to...</option>
+                        {libFolders.map(f => <option key={f} value={f}>{f}</option>)}
+                      </select>
                       <button className="btn ghost small" onClick={() => setLibText(null)}>
                         <span className="icon" style={{ width: 14, height: 14 }}>{I.x}</span>
                       </button>
@@ -1793,8 +1814,8 @@ export default function App() {
               {libLoadingText && <div className="mono" style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)' }}>Loading text...</div>}
 
               {/* Search results */}
-              {libSearching && <div className="mono" style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)' }}>Searching Sefaria...</div>}
-              {libError && <div style={{ textAlign: 'center', padding: 16, color: 'var(--accent)', fontSize: 13 }}>Search error: {libError}</div>}
+              {libSearching && <div className="mono" style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)' }}>Searching...</div>}
+              {libError && <div style={{ textAlign: 'center', padding: 16, color: 'var(--ink-3)', fontSize: 13, fontStyle: 'italic' }}>{libError}</div>}
 
               {libResults.length > 0 && (
                 <div style={{ marginBottom: 28 }}>
@@ -1803,38 +1824,91 @@ export default function App() {
                   </div>
                   <div className="source-list">
                     {libResults.map((s, i) => (
-                      <div key={i} className="source-card" onClick={() => { setLibText(s); }} style={{ cursor: 'pointer' }}>
+                      <div key={i} className="source-card" onClick={() => setLibText(s)} style={{ cursor: 'pointer' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div className="source-cite">{s.ref}</div>
-                          {s.categories?.length > 0 && (
-                            <span className="badge" style={{ fontSize: 8, padding: '2px 6px' }}>{s.categories[0]}</span>
-                          )}
+                          {s.categories?.length > 0 && <span className="badge" style={{ fontSize: 8, padding: '2px 6px' }}>{s.categories[0]}</span>}
                         </div>
                         {s.he && <div className="source-heb" style={{ fontSize: 18 }}>{s.he.substring(0, 250)}{s.he.length > 250 ? '...' : ''}</div>}
                         {s.en && <div className="source-en" style={{ fontSize: 14 }}>{s.en.substring(0, 250)}{s.en.length > 250 ? '...' : ''}</div>}
-                        {!s.en && !s.he && s.heRef && <div className="heb" style={{ fontSize: 14, color: 'var(--ink-3)' }}>{s.heRef}</div>}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Saved sources */}
+              {/* Saved sources — folder view */}
               {libSaved.length > 0 && (
                 <div style={{ marginBottom: 28 }}>
-                  <div className="nav-section" style={{ marginBottom: 10 }}>My Sources ({libSaved.length})</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <div className="nav-section" style={{ margin: 0 }}>My Sources ({libSaved.length})</div>
+                    <button className="btn ghost small" onClick={() => {
+                      const name = prompt('New folder name:');
+                      if (name?.trim() && !libFolders.includes(name.trim())) setLibFolders(prev => [...prev, name.trim()]);
+                    }}>
+                      <span className="icon" style={{ width: 12, height: 12 }}>{I.plus}</span> Folder
+                    </button>
+                  </div>
+
+                  {/* Folder tabs */}
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 12, overflowX: 'auto' }}>
+                    <button className={`tab ${!libActiveFolder ? 'active' : ''}`} style={{ padding: '6px 10px', fontSize: 11 }}
+                      onClick={() => setLibActiveFolder(null)}>All</button>
+                    {libFolders.map(f => (
+                      <button key={f} className={`tab ${libActiveFolder === f ? 'active' : ''}`} style={{ padding: '6px 10px', fontSize: 11 }}
+                        onClick={() => setLibActiveFolder(f)}>
+                        {f} ({libSaved.filter(s => (s.folder || 'General') === f).length})
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="source-list">
-                    {libSaved.map((s, i) => (
+                    {libSaved.filter(s => !libActiveFolder || (s.folder || 'General') === libActiveFolder).map((s, i) => (
                       <div key={i} className="source-card" onClick={() => { if (s.url) window.open(s.url, '_blank'); }}
                         style={{ cursor: s.url ? 'pointer' : 'default', borderLeftColor: s.type === 'upload' ? 'var(--sage)' : s.type === 'url' ? 'var(--accent)' : 'var(--gold)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
                             <div className="source-cite">{s.ref}</div>
-                            {s.type && <span className="badge" style={{ fontSize: 8, padding: '1px 5px', marginTop: 4 }}>{s.type}</span>}
+                            <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+                              {s.type && <span className="badge" style={{ fontSize: 8, padding: '1px 5px' }}>{s.type}</span>}
+                              <span className="badge" style={{ fontSize: 8, padding: '1px 5px' }}>{s.folder || 'General'}</span>
+                            </div>
                           </div>
-                          <button className="btn ghost small" onClick={e => { e.stopPropagation(); setLibSaved(prev => prev.filter((_, j) => j !== i)); }}>
-                            <span className="icon" style={{ width: 12, height: 12 }}>{I.trash}</span>
-                          </button>
+                          <div style={{ display: 'flex', gap: 2 }}>
+                            {/* Move to folder */}
+                            <select className="mono" style={{ fontSize: 9, background: 'var(--bg-sunken)', border: '1px solid var(--rule-soft)', borderRadius: 3, padding: '2px 4px', color: 'var(--ink-3)', cursor: 'pointer' }}
+                              value={s.folder || 'General'}
+                              onChange={e => { e.stopPropagation(); setLibSaved(prev => prev.map((x, j) => j === libSaved.indexOf(s) ? { ...x, folder: e.target.value } : x)); }}>
+                              {libFolders.map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                            {/* Copy to sparks */}
+                            <button className="btn ghost small" style={{ minHeight: 24, minWidth: 24, padding: 2 }} title="Copy to Sparks"
+                              onClick={e => { e.stopPropagation(); setSparks(prev => [{ id: crypto.randomUUID(), body: `${s.ref}\n${s.he || s.en}`, tag: 'Source', when: new Date().toLocaleDateString(), url: s.url }, ...prev]); }}>
+                              <span className="icon" style={{ width: 12, height: 12 }}>{I.spark}</span>
+                            </button>
+                            {/* Copy to file */}
+                            {encounters.length > 0 && (
+                              <select className="mono" style={{ fontSize: 9, background: 'var(--bg-sunken)', border: '1px solid var(--rule-soft)', borderRadius: 3, padding: '2px', color: 'var(--ink-3)', cursor: 'pointer', maxWidth: 60 }}
+                                onChange={async e2 => {
+                                  e2.stopPropagation();
+                                  if (e2.target.value) {
+                                    await fetch(`/api/rav/encounters/${e2.target.value}`, {
+                                      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ addSource: { ref: s.ref, he: s.he, en: s.en, addedAt: new Date().toISOString() } }),
+                                    });
+                                    fetchEncounters(); e2.target.value = '';
+                                  }
+                                }} defaultValue="">
+                                <option value="" disabled>→ File</option>
+                                {encounters.map(enc => <option key={enc.id} value={enc.id}>{enc.congregantName}</option>)}
+                              </select>
+                            )}
+                            {/* Delete */}
+                            <button className="btn ghost small" style={{ minHeight: 24, minWidth: 24, padding: 2 }}
+                              onClick={e => { e.stopPropagation(); setLibSaved(prev => prev.filter((_, j) => j !== libSaved.indexOf(s))); }}>
+                              <span className="icon" style={{ width: 12, height: 12 }}>{I.trash}</span>
+                            </button>
+                          </div>
                         </div>
                         {s.he && <div className="source-heb" style={{ fontSize: 16 }}>{s.he.substring(0, 150)}{s.he.length > 150 ? '...' : ''}</div>}
                         {s.en && <div className="source-en" style={{ fontSize: 13 }}>{s.en.substring(0, 150)}{s.en.length > 150 ? '...' : ''}</div>}
@@ -1845,23 +1919,17 @@ export default function App() {
               )}
 
               {/* Empty state */}
-              {!libSearching && libResults.length === 0 && libSaved.length === 0 && !libText && (
+              {!libSearching && libResults.length === 0 && libSaved.length === 0 && !libText && !libQuery && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
                   <div className="card" style={{ padding: 22 }}>
                     <div className="mono" style={{ color: 'var(--gold)', marginBottom: 8 }}>Sefaria</div>
                     <p style={{ fontSize: 20, fontWeight: 600 }}>Jewish Texts</p>
                     <p style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 6 }}>3,000+ years of Torah, Talmud, Midrash, Halakha, and commentaries</p>
-                    <p style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 8, fontStyle: 'italic' }}>
-                      Search by reference (Genesis 1:1), topic (mourning), or keyword (hesed)
-                    </p>
                   </div>
                   <div className="card" style={{ padding: 22 }}>
                     <div className="mono" style={{ color: 'var(--gold)', marginBottom: 8 }}>Personal</div>
-                    <p style={{ fontSize: 20, fontWeight: 600 }}>Saved Sources</p>
-                    <p style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 6 }}>Sources you save from searches appear here for quick access</p>
-                    <p style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 8, fontStyle: 'italic' }}>
-                      Save sources to build your personal reference collection
-                    </p>
+                    <p style={{ fontSize: 20, fontWeight: 600 }}>My Sources</p>
+                    <p style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: 6 }}>Save, organize, and connect sources to your encounters</p>
                   </div>
                 </div>
               )}
