@@ -88,6 +88,9 @@ export default function App() {
   const [recPaused, setRecPaused] = useState(false);
   const [recTime, setRecTime] = useState(0);
   const recTimerRef = useRef<NodeJS.Timeout>(undefined);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const [transcribing, setTranscribing] = useState(false);
 
   // Theme
   const [theme, setTheme] = useState('warm');
@@ -192,6 +195,55 @@ export default function App() {
   };
   const stopRecTimer = () => { if (recTimerRef.current) clearInterval(recTimerRef.current); };
   const fmtTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/mp4';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      recorder.start(1000); // collect chunks every second
+      mediaRecorderRef.current = recorder;
+      startRecTimer();
+      setRecPaused(false);
+    } catch (err) {
+      console.error('Mic access denied:', err);
+      setRecTranscript('Error: Microphone access denied. Please allow microphone access and try again.');
+    }
+  };
+
+  const stopRecording = (): Blob | null => {
+    stopRecTimer();
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return null;
+    recorder.stop();
+    recorder.stream.getTracks().forEach(t => t.stop());
+    mediaRecorderRef.current = null;
+    const mimeType = recorder.mimeType || 'audio/webm';
+    return new Blob(chunksRef.current, { type: mimeType });
+  };
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, `recording-${Date.now()}.webm`);
+      formData.append('mode', 'encounter');
+      const res = await fetch('/api/transcribe-elevenlabs', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Transcription failed' }));
+        setRecTranscript(prev => prev + '\n\n[Transcription error: ' + (err.error || 'unknown') + ']');
+        return;
+      }
+      const data = await res.json();
+      setRecTranscript(prev => prev ? prev + '\n\n' + data.text : data.text);
+    } catch (e: any) {
+      setRecTranscript(prev => prev + '\n\n[Transcription error: ' + e.message + ']');
+    } finally {
+      setTranscribing(false);
+    }
+  };
 
   // ─── API helpers ────────────────────────────────────────
   const saveField = async (field: string, value: string) => {
@@ -661,13 +713,54 @@ export default function App() {
                 <div>
                   <div className="section-head">
                     <div><h2 className="section-title">מסמכים</h2><div className="section-title-en">Documents</div></div>
-                    <button className="btn small"><span className="icon">{I.plus}</span> Upload</button>
+                    <label className="btn small" style={{ cursor: 'pointer' }}>
+                      <span className="icon">{I.plus}</span> Upload
+                      <input type="file" multiple accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.heic"
+                        style={{ display: 'none' }}
+                        onChange={async (e) => {
+                          const files = e.target.files;
+                          if (!files) return;
+                          for (const file of Array.from(files)) {
+                            const form = new FormData();
+                            form.append('file', file);
+                            form.append('encounterId', openFileId || '');
+                            try {
+                              const res = await fetch('/api/upload-document', { method: 'POST', body: form });
+                              if (res.ok) {
+                                const data = await res.json();
+                                // Store doc reference in encounter
+                                await fetch(`/api/rav/encounters/${openFileId}`, {
+                                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ appendTranscript: `[Document: ${file.name} (${(file.size / 1024).toFixed(1)}KB) — ${data.url}]` }),
+                                });
+                                fetchEncounters();
+                              }
+                            } catch {}
+                          }
+                          e.target.value = '';
+                        }} />
+                    </label>
                   </div>
-                  <div className="dropzone">
+                  <label className="dropzone" style={{ cursor: 'pointer', display: 'block' }}>
                     <span className="icon" style={{ width: 32, height: 32, display: 'block', margin: '0 auto 8px', color: 'var(--ink-3)' }}>{I.doc}</span>
                     <p style={{ fontSize: 15 }}>Drop files here or click to upload</p>
                     <p style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>PDFs, photos, notes, condolence letters</p>
-                  </div>
+                    <input type="file" multiple accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.heic"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const files = e.target.files;
+                        if (!files) return;
+                        for (const file of Array.from(files)) {
+                          const form = new FormData();
+                          form.append('file', file);
+                          form.append('encounterId', openFileId || '');
+                          try {
+                            await fetch('/api/upload-document', { method: 'POST', body: form });
+                          } catch {}
+                        }
+                        e.target.value = '';
+                      }} />
+                  </label>
                 </div>
               )}
 
@@ -1033,7 +1126,7 @@ export default function App() {
                 <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
                   <button className="btn ghost" onClick={() => setShowRec(false)}>Cancel</button>
                   <button className="btn primary" disabled={!recConsent}
-                    onClick={() => { setRecPhase('recording'); startRecTimer(); }}>
+                    onClick={() => { setRecPhase('recording'); startRecording(); }}>
                     <span className="icon">{I.mic}</span> Begin
                   </button>
                 </div>
@@ -1059,10 +1152,28 @@ export default function App() {
                     placeholder="Live transcript will appear here... (or type/paste)" />
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'space-between' }}>
-                  <button className="btn" onClick={() => setRecPaused(!recPaused)}>
+                  <button className="btn" onClick={() => {
+                    const recorder = mediaRecorderRef.current;
+                    if (recorder) {
+                      if (recPaused) { recorder.resume(); setRecPaused(false); }
+                      else { recorder.pause(); setRecPaused(true); }
+                    }
+                  }}>
                     <span className="icon">{recPaused ? I.play : I.pause}</span> {recPaused ? 'Resume' : 'Pause'}
                   </button>
-                  <button className="btn primary" onClick={() => { stopRecTimer(); setRecPhase('review'); }}>
+                  <button className="btn primary" onClick={async () => {
+                    const blob = stopRecording();
+                    setRecPhase('review');
+                    if (blob && blob.size > 0) {
+                      // Upload audio backup to Vercel Blob
+                      const uploadForm = new FormData();
+                      uploadForm.append('audio', blob, `recording-${Date.now()}.webm`);
+                      uploadForm.append('encounterId', openFileId || 'unlinked');
+                      fetch('/api/upload-audio', { method: 'POST', body: uploadForm }).catch(() => {});
+                      // Transcribe
+                      await transcribeAudio(blob);
+                    }
+                  }}>
                     <span className="icon">{I.stop}</span> End & Save
                   </button>
                 </div>
@@ -1078,6 +1189,7 @@ export default function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0' }}>
                   <span className="badge sealed"><span className="icon">{I.lock}</span> Sealed on device</span>
                   <span className="mono" style={{ color: 'var(--ink-3)' }}>{fmtTime(recTime)}</span>
+                  {transcribing && <span className="mono" style={{ color: 'var(--accent)' }}>● Transcribing...</span>}
                 </div>
                 {recTranscript && (
                   <div className="card" style={{ padding: 16, marginBottom: 16 }}>
