@@ -114,9 +114,14 @@ export default function App() {
   const SPARK_CATEGORIES = ['Uncategorized', 'Sermon', 'Eulogy', 'Teaching', 'Personal', 'Torah', 'Story', 'Quote'];
 
   // Templates
-  interface Template { id: string; heb: string; en: string; sections: string; desc: string; prompt: string; builtIn?: boolean }
+  interface Template {
+    id: string; heb: string; en: string; sections: string; desc: string; prompt: string; builtIn?: boolean;
+    fullBody?: string; // Full template text (not just outline — the actual document skeleton)
+    styleDocuments?: { name: string; url: string; excerpt?: string }[]; // Uploaded style examples
+    variables?: string[]; // Which context to include: 'transcript', 'notes', 'documents', 'sparks', 'sources'
+  }
   const DEFAULT_TEMPLATES: Template[] = [
-    { id: 'hesped', heb: 'הספד', en: 'Eulogy (Hesped)', sections: 'Opening, Life story, Character, Torah, Closing', desc: 'A framework for honoring the departed', prompt: 'Based on the encounter transcript with {{subject}}, create a eulogy that honors their life, incorporates personal stories shared by the family, includes relevant Torah references about loss and legacy, and balances grief with celebration of life. Structure: Opening acknowledgment → Life story and character → Torah wisdom → Closing blessing.', builtIn: true },
+    { id: 'hesped', heb: 'הספד', en: 'Eulogy (Hesped)', sections: 'Opening, Life story, Character, Torah, Closing', desc: 'A framework for honoring the departed', prompt: 'Based on the encounter transcript with {{subject}}, create a eulogy that honors their life, incorporates personal stories shared by the family, includes relevant Torah references about loss and legacy, and balances grief with celebration of life. Structure: Opening acknowledgment → Life story and character → Torah wisdom → Closing blessing.', builtIn: true, variables: ['transcript', 'notes', 'sparks'] },
     { id: 'drasha', heb: 'דרשה', en: 'Sermon (Drasha)', sections: 'Hook, Text, Teaching, Application, Call', desc: 'Shabbat or holiday sermon structure', prompt: 'Based on the encounter transcript and notes, create a sermon that draws on themes from the conversation, connects to Torah/Talmud teachings, is accessible to a general congregation, and includes practical application. Structure: Hook → Torah text → Teaching/insight → Application to daily life → Call to action.', builtIn: true },
     { id: 'dvar_torah', heb: 'דבר תורה', en: "D'var Torah", sections: 'Text, Question, Insight, Connection', desc: 'Concise Torah teaching', prompt: 'Based on the encounter and notes, create a concise D\'var Torah that centers on a specific Torah portion, raises a question, offers a fresh insight, and connects to the themes discussed. Keep it focused and impactful (500-800 words).', builtIn: true },
     { id: 'bar_mitzvah', heb: 'בר/בת מצוה', en: 'Bar/Bat Mitzvah', sections: 'Welcome, Torah portion, Personal, Blessing', desc: 'Coming of age celebration', prompt: 'Based on the encounter transcript with the family, create bar/bat mitzvah remarks that welcome the community, connect to the Torah portion, highlight personal qualities of the young person, and offer a meaningful blessing for their journey.', builtIn: true },
@@ -365,16 +370,23 @@ export default function App() {
     if (!activeFile?.transcript?.trim()) return;
     setGenerating(true); setStreamedContent('');
     try {
-      // Use template prompt if the file has a matching template
+      // Use template prompt + context if the file has a matching template
       const fileTemplate = templates.find(t => t.id === activeFile.type);
+      const vars = fileTemplate?.variables || ['transcript', 'notes'];
       const customPrompt = fileTemplate?.prompt || undefined;
+      const templateBody = fileTemplate?.fullBody || undefined;
+      const styleExcerpts = fileTemplate?.styleDocuments?.map(d => d.excerpt).filter(Boolean).join('\n\n---\n\n') || undefined;
+      // Gather sparks if included
+      const sparkContext = vars.includes('sparks') && sparks.length > 0
+        ? sparks.map(s => `[${s.tag}] ${s.body}`).join('\n') : undefined;
       const res = await fetch('/api/rav/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          transcript: activeFile.transcript, notes: activeFile.notes,
+          transcript: vars.includes('transcript') ? activeFile.transcript : undefined,
+          notes: vars.includes('notes') ? activeFile.notes : undefined,
           type: draftType, instructions: draftInstructions.trim() || undefined,
           congregantName: activeFile.congregantName,
-          customPrompt,
+          customPrompt, templateBody, styleExcerpts, sparkContext,
         }),
       });
       if (!res.ok) throw new Error('Generation failed');
@@ -1237,7 +1249,8 @@ export default function App() {
                       ? (fn: (prev: Template) => Template) => setNewTempl(fn)
                       : (fn: (prev: Template) => Template) => setEditTempl(prev => prev ? fn(prev) : prev);
                     return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {/* Basic info */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                           <div>
                             <div className="settings-label" style={{ fontSize: 13, marginBottom: 4 }}>Hebrew Name</div>
@@ -1259,24 +1272,145 @@ export default function App() {
                           <div className="settings-label" style={{ fontSize: 13, marginBottom: 4 }}>Sections</div>
                           <input className="input" value={t.sections} onChange={e => setT(p => ({ ...p, sections: e.target.value }))}
                             placeholder="Opening, Body, Torah, Closing (comma-separated)" />
-                          <div className="settings-help">Comma-separated section names that define the structure</div>
+                          <div className="settings-help">Comma-separated section names that define the document structure</div>
                         </div>
+
+                        <hr className="divider" style={{ margin: '4px 0' }} />
+
+                        {/* Full template body */}
                         <div>
-                          <div className="settings-label" style={{ fontSize: 13, marginBottom: 4 }}>
-                            AI Generation Prompt
+                          <div className="settings-label" style={{ fontSize: 13, marginBottom: 4 }}>Full Template Body</div>
+                          <div className="settings-help" style={{ marginBottom: 8 }}>
+                            Write the complete document skeleton. The AI will fill in content based on the encounter.
+                            Use section headers and placeholder text to guide the output.
                           </div>
-                          <div className="prompt-block" contentEditable suppressContentEditableWarning
-                            onBlur={e => setT(p => ({ ...p, prompt: e.currentTarget.textContent || '' }))}
-                            style={{ minHeight: 100 }}>
-                            {t.prompt || 'Based on the encounter transcript with {{subject}}, create a document that...'}
+                          <textarea className="input serif" rows={8} value={t.fullBody || ''}
+                            onChange={e => setT(p => ({ ...p, fullBody: e.target.value }))}
+                            placeholder={"[Opening]\nWe gather today to honor the memory of {{subject}}...\n\n[Life Story]\nThose who knew {{subject}} will remember...\n\n[Torah]\nIn Kohelet we read...\n\n[Closing]\nMay the memory of {{subject}} be a blessing..."} />
+                        </div>
+
+                        <hr className="divider" style={{ margin: '4px 0' }} />
+
+                        {/* AI prompt */}
+                        <div>
+                          <div className="settings-label" style={{ fontSize: 13, marginBottom: 4 }}>AI Generation Prompt</div>
+                          <div className="settings-help" style={{ marginBottom: 8 }}>
+                            Instructions for the AI when generating content using this template.
                           </div>
+                          <textarea className="input" rows={5} value={t.prompt}
+                            onChange={e => setT(p => ({ ...p, prompt: e.target.value }))}
+                            placeholder="Based on the encounter transcript with {{subject}}, create a document that..."
+                            style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, lineHeight: 1.6 }} />
                           <div className="settings-help" style={{ marginTop: 6 }}>
-                            Variables: <code className="mono" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--bg-sunken)', borderRadius: 3 }}>{'{{transcript}}'}</code>{' '}
-                            <code className="mono" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--bg-sunken)', borderRadius: 3 }}>{'{{subject}}'}</code>{' '}
-                            <code className="mono" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--bg-sunken)', borderRadius: 3 }}>{'{{notes}}'}</code>
+                            Variables:{' '}
+                            {['{{transcript}}', '{{subject}}', '{{notes}}', '{{documents}}', '{{sparks}}', '{{sources}}', '{{template_body}}'].map(v => (
+                              <code key={v} className="mono" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--bg-sunken)', borderRadius: 3, marginRight: 4 }}>{v}</code>
+                            ))}
                           </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+
+                        <hr className="divider" style={{ margin: '4px 0' }} />
+
+                        {/* Context variables to include */}
+                        <div>
+                          <div className="settings-label" style={{ fontSize: 13, marginBottom: 8 }}>Include in Generation</div>
+                          <div className="settings-help" style={{ marginBottom: 10 }}>
+                            Select which context the AI receives when generating with this template.
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {[
+                              { key: 'transcript', label: 'Encounter transcript', desc: 'The recorded conversation' },
+                              { key: 'notes', label: 'Private notes', desc: 'Your personal annotations' },
+                              { key: 'documents', label: 'Uploaded documents', desc: 'PDFs, photos, letters attached to the file' },
+                              { key: 'sparks', label: 'Related sparks', desc: 'Insights and ideas from your sparks inbox' },
+                              { key: 'sources', label: 'Attached sources', desc: 'Torah/Talmud sources linked to the file' },
+                            ].map(v => {
+                              const active = (t.variables || ['transcript', 'notes']).includes(v.key);
+                              return (
+                                <button key={v.key}
+                                  className={`btn small ${active ? 'primary' : ''}`}
+                                  style={{ fontSize: 12 }}
+                                  onClick={() => setT(p => {
+                                    const vars = p.variables || ['transcript', 'notes'];
+                                    return { ...p, variables: active ? vars.filter(x => x !== v.key) : [...vars, v.key] };
+                                  })}>
+                                  {v.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <hr className="divider" style={{ margin: '4px 0' }} />
+
+                        {/* Style documents */}
+                        <div>
+                          <div className="settings-label" style={{ fontSize: 13, marginBottom: 4 }}>Style Examples</div>
+                          <div className="settings-help" style={{ marginBottom: 10 }}>
+                            Upload documents that represent your writing style. The AI will match this tone, structure, and voice.
+                          </div>
+
+                          {(t.styleDocuments || []).map((doc, i) => (
+                            <div key={i} className="list-row" style={{ marginBottom: 6 }}>
+                              <div className="list-row-icon"><span className="icon">{I.doc}</span></div>
+                              <div>
+                                <div style={{ fontSize: 14, fontWeight: 500 }}>{doc.name}</div>
+                                {doc.excerpt && <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>{doc.excerpt.substring(0, 80)}...</div>}
+                              </div>
+                              <button className="btn ghost small" onClick={() => setT(p => ({
+                                ...p, styleDocuments: (p.styleDocuments || []).filter((_, j) => j !== i)
+                              }))}>
+                                <span className="icon" style={{ width: 14, height: 14 }}>{I.trash}</span>
+                              </button>
+                            </div>
+                          ))}
+
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <label className="btn small" style={{ cursor: 'pointer' }}>
+                              <span className="icon">{I.doc}</span> Upload Document
+                              <input type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: 'none' }}
+                                onChange={async e => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const form = new FormData();
+                                  form.append('file', file);
+                                  form.append('encounterId', 'templates');
+                                  try {
+                                    const res = await fetch('/api/upload-document', { method: 'POST', body: form });
+                                    if (res.ok) {
+                                      const data = await res.json();
+                                      // Read text excerpt if it's a text file
+                                      let excerpt = '';
+                                      if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+                                        excerpt = await file.text().then(t => t.substring(0, 200));
+                                      }
+                                      setT(p => ({
+                                        ...p,
+                                        styleDocuments: [...(p.styleDocuments || []), { name: file.name, url: data.url, excerpt }]
+                                      }));
+                                    }
+                                  } catch {}
+                                  e.target.value = '';
+                                }} />
+                            </label>
+                            <button className="btn small" onClick={() => {
+                              const text = prompt('Paste a text excerpt that represents your style:');
+                              if (text?.trim()) {
+                                setT(p => ({
+                                  ...p,
+                                  styleDocuments: [...(p.styleDocuments || []), { name: 'Pasted excerpt', url: '', excerpt: text.trim() }]
+                                }));
+                              }
+                            }}>
+                              <span className="icon">{I.copy}</span> Paste Text
+                            </button>
+                          </div>
+                        </div>
+
+                        <hr className="divider" style={{ margin: '4px 0' }} />
+
+                        {/* Save */}
+                        <div style={{ display: 'flex', gap: 8 }}>
                           <button className="btn primary" onClick={() => {
                             if (showNewTemplate) {
                               if (!newTempl.en.trim()) return;
