@@ -67,22 +67,61 @@ export async function GET(req: NextRequest) {
 
     console.log('[Sources] Searching Sefaria:', JSON.stringify(searchBody));
 
-    const searchRes = await fetch('https://www.sefaria.org/api/search-wrapper', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(searchBody),
-    });
+    // Try multiple Sefaria search endpoints
+    let hits: any[] = [];
 
-    if (!searchRes.ok) {
-      const errText = await searchRes.text().catch(() => '');
-      console.error('[Sources] Sefaria search failed:', searchRes.status, errText);
-      return NextResponse.json({ results: [], error: `Sefaria returned ${searchRes.status}` });
+    // Attempt 1: search-wrapper POST
+    try {
+      const searchRes = await fetch('https://www.sefaria.org/api/search-wrapper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(searchBody),
+      });
+      const rawText = await searchRes.text();
+      console.log('[Sources] search-wrapper status:', searchRes.status, 'body length:', rawText.length, 'first 200:', rawText.substring(0, 200));
+      if (searchRes.ok) {
+        const data = JSON.parse(rawText);
+        hits = data.hits?.hits || [];
+      }
+    } catch (e: any) {
+      console.error('[Sources] search-wrapper failed:', e.message);
     }
 
-    const data = await searchRes.json();
-    const hits = data.hits?.hits || [];
+    // Attempt 2: If no hits, try the GET search endpoint
+    if (hits.length === 0) {
+      try {
+        const getUrl = `https://www.sefaria.org/api/search/text/${encodeURIComponent(q)}?size=${size}`;
+        console.log('[Sources] Trying GET fallback:', getUrl);
+        const getRes = await fetch(getUrl);
+        const rawText = await getRes.text();
+        console.log('[Sources] GET fallback status:', getRes.status, 'first 200:', rawText.substring(0, 200));
+        if (getRes.ok) {
+          const data = JSON.parse(rawText);
+          hits = data.hits?.hits || [];
+        }
+      } catch (e: any) {
+        console.error('[Sources] GET fallback failed:', e.message);
+      }
+    }
 
-    console.log('[Sources] Got', hits.length, 'hits');
+    // Attempt 3: If still no hits, try Sefaria's newer search endpoint
+    if (hits.length === 0) {
+      try {
+        const v3Url = `https://www.sefaria.org/api/search/merged/${encodeURIComponent(q)}?size=${size}&type=text`;
+        console.log('[Sources] Trying v3 merged search:', v3Url);
+        const v3Res = await fetch(v3Url);
+        const rawText = await v3Res.text();
+        console.log('[Sources] v3 merged status:', v3Res.status, 'first 200:', rawText.substring(0, 200));
+        if (v3Res.ok) {
+          const data = JSON.parse(rawText);
+          hits = data.hits?.hits || data.text?.hits?.hits || [];
+        }
+      } catch (e: any) {
+        console.error('[Sources] v3 merged failed:', e.message);
+      }
+    }
+
+    console.log('[Sources] Total hits:', hits.length);
 
     const results = hits.map((hit: any) => {
       const src = hit._source || {};
