@@ -1595,39 +1595,33 @@ textarea.input { font-family: 'Cormorant Garamond', serif; font-size: 16px; line
 }
 .view-toggle button svg { width: 13px; height: 13px; }
 
-/* ==== sticky note (hover overlay) ==== */
+/* ==== sticky note (hover overlay — triggered by top-right corner) ==== */
 .card-host { position: relative; }
-.card-host .sticky-hover {
+.sticky-trigger {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 220px;
+  top: 6px; right: 6px;
+  z-index: 5;
+}
+.sticky-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.card-host:hover .sticky-dot { opacity: 0.6; }
+.sticky-hover {
+  width: 160px;
   background: #fef9c3;
   color: #1f1500;
-  border-radius: 4px 4px 14px 4px;
-  padding: 12px 14px 10px;
-  box-shadow:
-    0 1px 0 rgba(255, 250, 200, 0.6) inset,
-    0 8px 22px -10px rgba(58, 45, 28, 0.5),
-    0 2px 4px rgba(58, 45, 28, 0.15);
-  transform: rotate(2.2deg) scale(0.96);
+  border-radius: 3px 3px 8px 3px;
+  padding: 6px 8px 5px;
+  box-shadow: 0 4px 12px -4px rgba(58, 45, 28, 0.4), 0 1px 2px rgba(58, 45, 28, 0.1);
+  transform: rotate(-0.5deg);
   transform-origin: top right;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 180ms ease, transform 220ms cubic-bezier(.2,.7,.2,1);
-  z-index: 5;
   font-family: 'Cormorant Garamond', serif;
 }
-[data-theme="sacred"] .card-host .sticky-hover {
-  background: #c8b86b;
-  color: #1a1500;
-}
-.card-host:hover .sticky-hover,
-.card-host .sticky-hover.always-open {
-  opacity: 1;
-  pointer-events: auto;
-  transform: rotate(-1deg) scale(1);
-}
+[data-theme="sacred"] .sticky-hover { background: #c8b86b; color: #1a1500; }
 .sticky-hover textarea {
   width: 100%;
   background: transparent;
@@ -1636,35 +1630,37 @@ textarea.input { font-family: 'Cormorant Garamond', serif; font-size: 16px; line
   resize: none;
   font-family: 'Cormorant Garamond', serif;
   font-style: italic;
-  font-size: 14px;
+  font-size: 11px;
   color: inherit;
-  line-height: 1.4;
-  min-height: 52px;
+  line-height: 1.3;
+  min-height: 28px;
 }
-.sticky-hover textarea::placeholder { color: rgba(58, 45, 28, 0.4); }
+.sticky-hover textarea::placeholder { color: rgba(58, 45, 28, 0.35); font-size: 10px; }
 .sticky-hover .row {
   display: flex;
-  gap: 4px;
-  margin-top: 6px;
-  border-top: 1px dashed rgba(58, 45, 28, 0.25);
-  padding-top: 6px;
+  gap: 1px;
+  margin-top: 3px;
+  border-top: 1px dashed rgba(58, 45, 28, 0.18);
+  padding-top: 3px;
 }
 .sticky-hover button {
   flex: 1;
   background: transparent;
   border: none;
-  color: rgba(58, 45, 28, 0.7);
-  font-size: 10px;
+  color: rgba(58, 45, 28, 0.55);
+  font-size: 7px;
   font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  padding: 5px 4px;
-  border-radius: 3px;
+  padding: 2px 1px;
+  border-radius: 2px;
   cursor: pointer;
   transition: background 100ms;
+  min-height: 16px;
+  min-width: 16px;
 }
 .sticky-hover button:hover { background: rgba(0,0,0,0.06); color: rgba(58, 45, 28, 1); }
-.sticky-hover button.active { background: rgba(0,0,0,0.1); color: rgba(58, 45, 28, 1); font-weight: 600; }
+.sticky-hover button.active { background: rgba(0,0,0,0.08); color: rgba(58, 45, 28, 1); font-weight: 600; }
 
 /* ==== status spine ==== */
 .spine-row { display: flex; align-items: center; gap: 4px; }
