@@ -157,7 +157,7 @@ export default function App() {
   const [libQuery, setLibQuery] = useState('');
   const [libResults, setLibResults] = useState<{ ref: string; heRef: string; he: string; en: string; categories: string[] }[]>([]);
   const [libSearching, setLibSearching] = useState(false);
-  const [libSaved, setLibSaved] = useState<{ ref: string; he: string; en: string; savedAt: string }[]>([]);
+  const [libSaved, setLibSaved] = useState<{ ref: string; he: string; en: string; savedAt: string; url?: string; type?: string }[]>([]);
   const [libBrowse, setLibBrowse] = useState<string | null>(null);
   const [libText, setLibText] = useState<{ ref: string; heRef: string; he: string; en: string } | null>(null);
   const [libLoadingText, setLibLoadingText] = useState(false);
@@ -1676,14 +1676,51 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Search */}
-              <form className="search-row" style={{ marginBottom: 12 }} onSubmit={e => { e.preventDefault(); searchLibrary(libQuery, libBrowse || undefined); }}>
-                <input className="search-input" value={libQuery} onChange={e => setLibQuery(e.target.value)}
-                  placeholder="Search — topic (love, mourning, justice), keyword (hesed), or reference (Genesis 1:1)..." />
-                <button type="submit" className="btn primary" disabled={libSearching}>
-                  <span className="icon">{I.search}</span>
+              {/* Search + Add */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <form className="search-row" style={{ flex: 1, marginBottom: 0 }} onSubmit={e => { e.preventDefault(); searchLibrary(libQuery, libBrowse || undefined); }}>
+                  <input className="search-input" value={libQuery} onChange={e => setLibQuery(e.target.value)}
+                    placeholder="Search — topic (love, mourning), keyword (hesed), or reference (Genesis 1:1)..." />
+                  <button type="submit" className="btn primary" disabled={libSearching}>
+                    <span className="icon">{I.search}</span>
+                  </button>
+                </form>
+                <label className="btn" style={{ cursor: 'pointer', flexShrink: 0 }}>
+                  <span className="icon">{I.doc}</span> Upload
+                  <input type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: 'none' }}
+                    onChange={async e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const form = new FormData();
+                      form.append('file', file);
+                      form.append('encounterId', 'library');
+                      try {
+                        const res = await fetch('/api/upload-document', { method: 'POST', body: form });
+                        if (res.ok) {
+                          const data = await res.json();
+                          let excerpt = '';
+                          if (file.name.endsWith('.txt')) excerpt = await file.text().then(t => t.substring(0, 300));
+                          setLibSaved(prev => [{
+                            ref: file.name, he: '', en: excerpt || `Uploaded document (${(file.size / 1024).toFixed(1)}KB)`,
+                            savedAt: new Date().toISOString(), url: data.url, type: 'upload',
+                          }, ...prev]);
+                        }
+                      } catch {}
+                      e.target.value = '';
+                    }} />
+                </label>
+                <button className="btn" style={{ flexShrink: 0 }} onClick={() => {
+                  const url = prompt('Paste a URL to a source, article, or teaching:');
+                  if (url?.trim()) {
+                    setLibSaved(prev => [{
+                      ref: url.trim().length > 50 ? url.trim().substring(0, 50) + '...' : url.trim(),
+                      he: '', en: url.trim(), savedAt: new Date().toISOString(), url: url.trim(), type: 'url',
+                    }, ...prev]);
+                  }
+                }}>
+                  <span className="icon">{I.search}</span> URL
                 </button>
-              </form>
+              </div>
 
               {/* Category filters */}
               <div style={{ display: 'flex', gap: 4, marginBottom: 12, overflowX: 'auto' }}>
@@ -1775,18 +1812,22 @@ export default function App() {
               {/* Saved sources */}
               {libSaved.length > 0 && (
                 <div style={{ marginBottom: 28 }}>
-                  <div className="nav-section" style={{ marginBottom: 10 }}>Saved Sources</div>
+                  <div className="nav-section" style={{ marginBottom: 10 }}>My Sources ({libSaved.length})</div>
                   <div className="source-list">
                     {libSaved.map((s, i) => (
-                      <div key={i} className="source-card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <div className="source-cite">{s.ref}</div>
-                          <button className="btn ghost small" onClick={() => setLibSaved(prev => prev.filter((_, j) => j !== i))}>
+                      <div key={i} className="source-card" onClick={() => { if (s.url) window.open(s.url, '_blank'); }}
+                        style={{ cursor: s.url ? 'pointer' : 'default', borderLeftColor: s.type === 'upload' ? 'var(--sage)' : s.type === 'url' ? 'var(--accent)' : 'var(--gold)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <div className="source-cite">{s.ref}</div>
+                            {s.type && <span className="badge" style={{ fontSize: 8, padding: '1px 5px', marginTop: 4 }}>{s.type}</span>}
+                          </div>
+                          <button className="btn ghost small" onClick={e => { e.stopPropagation(); setLibSaved(prev => prev.filter((_, j) => j !== i)); }}>
                             <span className="icon" style={{ width: 12, height: 12 }}>{I.trash}</span>
                           </button>
                         </div>
-                        {s.he && <div className="source-heb" style={{ fontSize: 16 }}>{s.he.substring(0, 100)}{s.he.length > 100 ? '...' : ''}</div>}
-                        {s.en && <div className="source-en" style={{ fontSize: 13 }}>{s.en.substring(0, 100)}{s.en.length > 100 ? '...' : ''}</div>}
+                        {s.he && <div className="source-heb" style={{ fontSize: 16 }}>{s.he.substring(0, 150)}{s.he.length > 150 ? '...' : ''}</div>}
+                        {s.en && <div className="source-en" style={{ fontSize: 13 }}>{s.en.substring(0, 150)}{s.en.length > 150 ? '...' : ''}</div>}
                       </div>
                     ))}
                   </div>
