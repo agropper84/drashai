@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const session = await getSessionFromCookies();
     if (!session.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const { transcript, notes, type, instructions, congregantName } = await req.json();
+    const { transcript, notes, type, instructions, congregantName, customPrompt } = await req.json();
 
     if (!transcript?.trim()) {
       return NextResponse.json({ error: 'Transcript is required' }, { status: 400 });
@@ -64,16 +64,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Invalid type. Choose from: ${Object.keys(PROMPTS).join(', ')}` }, { status: 400 });
     }
 
-    const systemPrompt = PROMPTS[type];
+    // Use custom template prompt if provided, otherwise default
+    const basePrompt = customPrompt || PROMPTS[type] || PROMPTS['sermon'];
 
-    const userPrompt = `${systemPrompt}
+    const userPrompt = `${basePrompt}
 
 ${instructions ? `ADDITIONAL INSTRUCTIONS FROM THE RABBI:\n${instructions}\n` : ''}
 ENCOUNTER TRANSCRIPT:
 ${transcript}
 
 ${notes ? `RABBI'S PRIVATE NOTES:\n${notes}` : ''}
-${congregantName ? `CONGREGANT NAME (for pastoral letter only): ${congregantName}` : ''}
+${congregantName ? `CONGREGANT/SUBJECT NAME: ${congregantName}` : ''}
 
 Generate the ${type.replace('_', ' ')} now.`;
 

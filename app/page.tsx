@@ -113,6 +113,23 @@ export default function App() {
 
   const SPARK_CATEGORIES = ['Uncategorized', 'Sermon', 'Eulogy', 'Teaching', 'Personal', 'Torah', 'Story', 'Quote'];
 
+  // Templates
+  interface Template { id: string; heb: string; en: string; sections: string; desc: string; prompt: string; builtIn?: boolean }
+  const DEFAULT_TEMPLATES: Template[] = [
+    { id: 'hesped', heb: 'הספד', en: 'Eulogy (Hesped)', sections: 'Opening, Life story, Character, Torah, Closing', desc: 'A framework for honoring the departed', prompt: 'Based on the encounter transcript with {{subject}}, create a eulogy that honors their life, incorporates personal stories shared by the family, includes relevant Torah references about loss and legacy, and balances grief with celebration of life. Structure: Opening acknowledgment → Life story and character → Torah wisdom → Closing blessing.', builtIn: true },
+    { id: 'drasha', heb: 'דרשה', en: 'Sermon (Drasha)', sections: 'Hook, Text, Teaching, Application, Call', desc: 'Shabbat or holiday sermon structure', prompt: 'Based on the encounter transcript and notes, create a sermon that draws on themes from the conversation, connects to Torah/Talmud teachings, is accessible to a general congregation, and includes practical application. Structure: Hook → Torah text → Teaching/insight → Application to daily life → Call to action.', builtIn: true },
+    { id: 'dvar_torah', heb: 'דבר תורה', en: "D'var Torah", sections: 'Text, Question, Insight, Connection', desc: 'Concise Torah teaching', prompt: 'Based on the encounter and notes, create a concise D\'var Torah that centers on a specific Torah portion, raises a question, offers a fresh insight, and connects to the themes discussed. Keep it focused and impactful (500-800 words).', builtIn: true },
+    { id: 'bar_mitzvah', heb: 'בר/בת מצוה', en: 'Bar/Bat Mitzvah', sections: 'Welcome, Torah portion, Personal, Blessing', desc: 'Coming of age celebration', prompt: 'Based on the encounter transcript with the family, create bar/bat mitzvah remarks that welcome the community, connect to the Torah portion, highlight personal qualities of the young person, and offer a meaningful blessing for their journey.', builtIn: true },
+    { id: 'wedding', heb: 'נישואין', en: 'Wedding Remarks', sections: 'Couple story, Torah, Blessings, Charge', desc: 'Under the chuppah', prompt: 'Based on the encounter transcript with the couple, create wedding remarks that tell their story, weave in Torah teachings about love and partnership, offer blessings, and charge them with building a Jewish home together.', builtIn: true },
+    { id: 'letter', heb: 'מכתב', en: 'Pastoral Letter', sections: 'Greeting, Acknowledgment, Guidance, Blessing', desc: 'Condolence or pastoral care', prompt: 'Based on the encounter transcript, create a pastoral letter that addresses the congregant by name, acknowledges their situation with empathy, offers relevant guidance or comfort from Jewish tradition, and closes with a blessing.', builtIn: true },
+    { id: 'study', heb: 'לימוד', en: 'Study Notes', sections: 'Source, Analysis, Questions, Application', desc: 'Personal learning journal', prompt: 'Based on the encounter and notes, create structured study notes that identify the key source texts discussed, analyze their meaning, raise questions for further exploration, and note practical applications.', builtIn: true },
+  ];
+  const [templates, setTemplates] = useState<Template[]>(DEFAULT_TEMPLATES);
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+  const [editTempl, setEditTempl] = useState<Template | null>(null);
+  const [showNewTemplate, setShowNewTemplate] = useState(false);
+  const [newTempl, setNewTempl] = useState<Template>({ id: '', heb: '', en: '', sections: '', desc: '', prompt: '' });
+
   const toggleSparkSelect = (id: string) => {
     setSparkSelected(prev => {
       const next = new Set(prev);
@@ -319,13 +336,13 @@ export default function App() {
   const handleCreate = async () => {
     if (!newName.trim()) return;
     setCreating(true);
-    const typeInfo = FILE_TYPES.find(t => t.key === newType);
+    const tmpl = templates.find(t => t.id === newType);
     try {
       const res = await fetch('/api/rav/encounters', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           congregantName: newName.trim(),
-          topic: typeInfo?.en,
+          topic: tmpl?.en || newType,
           type: newType,
         }),
       });
@@ -348,12 +365,16 @@ export default function App() {
     if (!activeFile?.transcript?.trim()) return;
     setGenerating(true); setStreamedContent('');
     try {
+      // Use template prompt if the file has a matching template
+      const fileTemplate = templates.find(t => t.id === activeFile.type);
+      const customPrompt = fileTemplate?.prompt || undefined;
       const res = await fetch('/api/rav/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           transcript: activeFile.transcript, notes: activeFile.notes,
           type: draftType, instructions: draftInstructions.trim() || undefined,
           congregantName: activeFile.congregantName,
+          customPrompt,
         }),
       });
       if (!res.ok) throw new Error('Generation failed');
@@ -519,7 +540,7 @@ export default function App() {
               ) : (
                 <div className="file-grid">
                   {encounters.map(enc => {
-                    const typeInfo = FILE_TYPES.find(t => t.key === enc.type);
+                    const typeInfo = templates.find(t => t.id === enc.type);
                     return (
                       <div key={enc.id} className="card file-card" onClick={() => setOpenFileId(enc.id)}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -558,8 +579,8 @@ export default function App() {
 
               <div className="file-detail-head">
                 <div>
-                  <div className="page-eyebrow">{FILE_TYPES.find(t => t.key === activeFile.type)?.en || activeFile.topic || 'Encounter'}</div>
-                  <h1 className="file-detail-title">{FILE_TYPES.find(t => t.key === activeFile.type)?.heb || ''}</h1>
+                  <div className="page-eyebrow">{templates.find(t => t.id === activeFile.type)?.en || activeFile.topic || 'Encounter'}</div>
+                  <h1 className="file-detail-title">{templates.find(t => t.id === activeFile.type)?.heb || ''}</h1>
                   <div className="file-detail-en">{activeFile.congregantName}</div>
                   <div className="file-detail-meta-row">
                     <span>{activeFile.date}</span>
@@ -663,7 +684,7 @@ export default function App() {
                     {/* Composer paper */}
                     {streamedContent ? (
                       <div className="composer-paper grain" style={{ position: 'relative' }}>
-                        <h2 className="composer-h heb-display">{FILE_TYPES.find(t => t.key === activeFile.type)?.heb || 'טיוטה'}</h2>
+                        <h2 className="composer-h heb-display">{templates.find(t => t.id === activeFile.type)?.heb || 'טיוטה'}</h2>
                         <div className="composer-h-en">{activeFile.congregantName}</div>
                         <div className="composer-body">
                           {streamedContent.split('\n\n').map((para, i) => (
@@ -869,7 +890,7 @@ export default function App() {
                         </button>
                         <button className="btn" onClick={() => {
                           const content = activeFile.generatedContent![activeFile.generatedContent!.length - 1].content;
-                          const typeInfo = FILE_TYPES.find(t => t.key === activeFile.type);
+                          const typeInfo = templates.find(t => t.id === activeFile.type);
                           const html = `<html><head><meta charset="utf-8"><style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.7;font-size:16px;color:#1a1a1a}h1{text-align:center;font-size:28px}p{margin-bottom:1em}</style></head><body><h1>${typeInfo?.en || 'Document'}: ${activeFile.congregantName}</h1>${content.split('\n\n').map(p => '<p>' + p + '</p>').join('')}</body></html>`;
                           const blob = new Blob([html], { type: 'application/msword' });
                           const url = URL.createObjectURL(blob);
@@ -1189,22 +1210,119 @@ export default function App() {
                   <h1 className="page-title heb-display">תבניות</h1>
                   <div className="page-title-en">Templates</div>
                 </div>
+                <button className="btn primary" onClick={() => {
+                  setNewTempl({ id: crypto.randomUUID(), heb: '', en: '', sections: '', desc: '', prompt: '' });
+                  setShowNewTemplate(true);
+                }}>
+                  <span className="icon">{I.plus}</span> New Template
+                </button>
               </div>
+
+              {/* Template editor */}
+              {(editingTemplate || showNewTemplate) && (
+                <div className="card" style={{ padding: 24, marginBottom: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h3 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>
+                      {showNewTemplate ? 'New Template' : 'Edit Template'}
+                    </h3>
+                    <button className="btn ghost small" onClick={() => { setEditingTemplate(null); setShowNewTemplate(false); }}>
+                      <span className="icon" style={{ width: 14, height: 14 }}>{I.x}</span>
+                    </button>
+                  </div>
+
+                  {(() => {
+                    const t = showNewTemplate ? newTempl : editTempl;
+                    if (!t) return null;
+                    const setT = showNewTemplate
+                      ? (fn: (prev: Template) => Template) => setNewTempl(fn)
+                      : (fn: (prev: Template) => Template) => setEditTempl(prev => prev ? fn(prev) : prev);
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          <div>
+                            <div className="settings-label" style={{ fontSize: 13, marginBottom: 4 }}>Hebrew Name</div>
+                            <input className="input serif" value={t.heb} onChange={e => setT(p => ({ ...p, heb: e.target.value }))}
+                              placeholder="e.g., הספד" style={{ direction: 'rtl' }} />
+                          </div>
+                          <div>
+                            <div className="settings-label" style={{ fontSize: 13, marginBottom: 4 }}>English Name</div>
+                            <input className="input serif" value={t.en} onChange={e => setT(p => ({ ...p, en: e.target.value }))}
+                              placeholder="e.g., Eulogy (Hesped)" />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="settings-label" style={{ fontSize: 13, marginBottom: 4 }}>Description</div>
+                          <input className="input serif" value={t.desc} onChange={e => setT(p => ({ ...p, desc: e.target.value }))}
+                            placeholder="A brief description of this template" />
+                        </div>
+                        <div>
+                          <div className="settings-label" style={{ fontSize: 13, marginBottom: 4 }}>Sections</div>
+                          <input className="input" value={t.sections} onChange={e => setT(p => ({ ...p, sections: e.target.value }))}
+                            placeholder="Opening, Body, Torah, Closing (comma-separated)" />
+                          <div className="settings-help">Comma-separated section names that define the structure</div>
+                        </div>
+                        <div>
+                          <div className="settings-label" style={{ fontSize: 13, marginBottom: 4 }}>
+                            AI Generation Prompt
+                          </div>
+                          <div className="prompt-block" contentEditable suppressContentEditableWarning
+                            onBlur={e => setT(p => ({ ...p, prompt: e.currentTarget.textContent || '' }))}
+                            style={{ minHeight: 100 }}>
+                            {t.prompt || 'Based on the encounter transcript with {{subject}}, create a document that...'}
+                          </div>
+                          <div className="settings-help" style={{ marginTop: 6 }}>
+                            Variables: <code className="mono" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--bg-sunken)', borderRadius: 3 }}>{'{{transcript}}'}</code>{' '}
+                            <code className="mono" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--bg-sunken)', borderRadius: 3 }}>{'{{subject}}'}</code>{' '}
+                            <code className="mono" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--bg-sunken)', borderRadius: 3 }}>{'{{notes}}'}</code>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                          <button className="btn primary" onClick={() => {
+                            if (showNewTemplate) {
+                              if (!newTempl.en.trim()) return;
+                              setTemplates(prev => [...prev, { ...newTempl, id: newTempl.id || crypto.randomUUID() }]);
+                              setShowNewTemplate(false);
+                            } else if (editTempl) {
+                              setTemplates(prev => prev.map(x => x.id === editTempl.id ? editTempl : x));
+                              setEditingTemplate(null);
+                            }
+                          }}>
+                            {showNewTemplate ? 'Create Template' : 'Save Changes'}
+                          </button>
+                          <button className="btn ghost" onClick={() => { setEditingTemplate(null); setShowNewTemplate(false); }}>Cancel</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Template grid */}
               <div className="template-grid">
-                {[
-                  { heb: 'הספד', en: 'Eulogy (Hesped)', sections: 'Opening, Life story, Character, Torah, Closing', desc: 'A framework for honoring the departed' },
-                  { heb: 'דרשה', en: 'Sermon (Drasha)', sections: 'Hook, Text, Teaching, Application, Call', desc: 'Shabbat or holiday sermon structure' },
-                  { heb: 'דבר תורה', en: "D'var Torah", sections: 'Text, Question, Insight, Connection', desc: 'Concise Torah teaching' },
-                  { heb: 'בר/בת מצוה', en: 'Bar/Bat Mitzvah', sections: 'Welcome, Torah portion, Personal, Blessing', desc: 'Coming of age celebration' },
-                  { heb: 'נישואין', en: 'Wedding Remarks', sections: 'Couple story, Torah, Blessings, Charge', desc: 'Under the chuppah' },
-                  { heb: 'מכתב', en: 'Pastoral Letter', sections: 'Greeting, Acknowledgment, Guidance, Blessing', desc: 'Condolence or pastoral care' },
-                  { heb: 'לימוד', en: 'Study Notes', sections: 'Source, Analysis, Questions, Application', desc: 'Personal learning journal' },
-                ].map((t, i) => (
-                  <div key={i} className="card template-card">
+                {templates.map(t => (
+                  <div key={t.id} className="card template-card" onClick={() => {
+                    setEditTempl({ ...t });
+                    setEditingTemplate(t.id);
+                    setShowNewTemplate(false);
+                  }} style={{ cursor: 'pointer' }}>
                     <div className="template-name">{t.heb}</div>
                     <div className="template-en">{t.en}</div>
                     <p style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.4 }}>{t.desc}</p>
                     <div className="template-sections">{t.sections}</div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                      <button className="btn ghost small" onClick={e => {
+                        e.stopPropagation();
+                        setEditTempl({ ...t });
+                        setEditingTemplate(t.id);
+                        setShowNewTemplate(false);
+                      }}>Edit</button>
+                      {!t.builtIn && (
+                        <button className="btn ghost small" style={{ color: 'var(--accent)' }}
+                          onClick={e => { e.stopPropagation(); setTemplates(prev => prev.filter(x => x.id !== t.id)); }}>
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1612,13 +1730,13 @@ export default function App() {
             <div className="modal-title-en">Create a new file</div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
-              {FILE_TYPES.map(ft => (
-                <button key={ft.key}
-                  className={`btn small ${newType === ft.key ? 'primary' : ''}`}
+              {templates.map(ft => (
+                <button key={ft.id}
+                  className={`btn small ${newType === ft.id ? 'primary' : ''}`}
                   style={{ justifyContent: 'flex-start' }}
-                  onClick={() => setNewType(ft.key)}>
+                  onClick={() => setNewType(ft.id)}>
                   <span className="heb" style={{ fontSize: 14 }}>{ft.heb}</span>
-                  <span style={{ fontSize: 12, color: newType === ft.key ? 'inherit' : 'var(--ink-3)' }}>{ft.en}</span>
+                  <span style={{ fontSize: 12, color: newType === ft.id ? 'inherit' : 'var(--ink-3)' }}>{ft.en}</span>
                 </button>
               ))}
             </div>
