@@ -13,7 +13,7 @@ const sessionOptions = {
 };
 
 const PUBLIC_PATHS = ['/login', '/api/auth'];
-const PUBLIC_PREFIXES = ['/_next', '/icons', '/favicon'];
+const PUBLIC_PREFIXES = ['/_next', '/icons', '/favicon', '/icon', '/apple-icon'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
