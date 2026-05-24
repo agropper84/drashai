@@ -58,6 +58,25 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       encounter.sources = (encounter.sources || []).filter((s: any) => s.ref !== updates.removeSourceRef);
     }
     if (updates.sources !== undefined) encounter.sources = updates.sources;
+    // Plan 2: tasks, phases, workflows
+    if (updates.addTask) {
+      if (!encounter.tasks) encounter.tasks = [];
+      encounter.tasks.push({ id: crypto.randomUUID(), body: updates.addTask.body, done: false, due: updates.addTask.due || null, createdAt: new Date().toISOString() });
+    }
+    if (updates.toggleTask) {
+      encounter.tasks = (encounter.tasks || []).map((t: any) => t.id === updates.toggleTask ? { ...t, done: !t.done } : t);
+    }
+    if (updates.removeTask) {
+      encounter.tasks = (encounter.tasks || []).filter((t: any) => t.id !== updates.removeTask);
+    }
+    if (updates.togglePhase) {
+      const completed = encounter.completedPhases || [];
+      encounter.completedPhases = completed.includes(updates.togglePhase)
+        ? completed.filter((p: string) => p !== updates.togglePhase)
+        : [...completed, updates.togglePhase];
+    }
+    if (updates.workflowId !== undefined) encounter.workflowId = updates.workflowId;
+    if (updates.phase !== undefined) encounter.phase = updates.phase;
     encounter.updatedAt = new Date().toISOString();
 
     await redis.set(itemKey(session.userId, id), JSON.stringify(encounter));

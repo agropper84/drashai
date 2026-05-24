@@ -1563,3 +1563,366 @@ textarea.input { font-family: 'Cormorant Garamond', serif; font-size: 16px; line
   .page-title { font-size: 32px !important; }
   .utterance { grid-template-columns: 60px 1fr; gap: 12px; }
 }
+/* Plan 2 — append these rules to app/globals.css.
+   Existing styles from Plan 1 are untouched. */
+
+/* ==== view toggle ==== */
+.view-toggle {
+  display: inline-flex;
+  background: var(--bg-sunken);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.view-toggle button {
+  background: transparent;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--ink-3);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: inherit;
+  transition: all 150ms;
+}
+.view-toggle button.active {
+  background: var(--bg-card-hi);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+}
+.view-toggle button svg { width: 13px; height: 13px; }
+
+/* ==== sticky note (hover overlay) ==== */
+.card-host { position: relative; }
+.card-host .sticky-hover {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 220px;
+  background: #fef9c3;
+  color: #1f1500;
+  border-radius: 4px 4px 14px 4px;
+  padding: 12px 14px 10px;
+  box-shadow:
+    0 1px 0 rgba(255, 250, 200, 0.6) inset,
+    0 8px 22px -10px rgba(58, 45, 28, 0.5),
+    0 2px 4px rgba(58, 45, 28, 0.15);
+  transform: rotate(2.2deg) scale(0.96);
+  transform-origin: top right;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 220ms cubic-bezier(.2,.7,.2,1);
+  z-index: 5;
+  font-family: 'Cormorant Garamond', serif;
+}
+[data-theme="sacred"] .card-host .sticky-hover {
+  background: #c8b86b;
+  color: #1a1500;
+}
+.card-host:hover .sticky-hover,
+.card-host .sticky-hover.always-open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: rotate(-1deg) scale(1);
+}
+.sticky-hover textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 14px;
+  color: inherit;
+  line-height: 1.4;
+  min-height: 52px;
+}
+.sticky-hover textarea::placeholder { color: rgba(58, 45, 28, 0.4); }
+.sticky-hover .row {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  border-top: 1px dashed rgba(58, 45, 28, 0.25);
+  padding-top: 6px;
+}
+.sticky-hover button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: rgba(58, 45, 28, 0.7);
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 100ms;
+}
+.sticky-hover button:hover { background: rgba(0,0,0,0.06); color: rgba(58, 45, 28, 1); }
+.sticky-hover button.active { background: rgba(0,0,0,0.1); color: rgba(58, 45, 28, 1); font-weight: 600; }
+
+/* ==== status spine ==== */
+.spine-row { display: flex; align-items: center; gap: 4px; }
+.spine-dot {
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 180ms cubic-bezier(.2,.7,.2,1);
+  flex-shrink: 0;
+  border: 1px solid var(--rule);
+  background: transparent;
+  position: relative;
+}
+button.spine-dot:hover { transform: scale(1.25); }
+.spine-dot.done { background: var(--sage); border-color: var(--sage); }
+.spine-dot.done::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-left: 1.5px solid #f0e7d2;
+  border-bottom: 1.5px solid #f0e7d2;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.spine-dot.current {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.spine-line {
+  height: 1px;
+  flex: 1;
+  background: var(--rule-soft);
+  transition: background 200ms;
+}
+.spine-line.done { background: var(--sage); }
+
+.spine-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--ink-4);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.spine-labels span {
+  flex: 1;
+  transition: color 150ms;
+}
+.spine-labels span:hover { color: var(--ink-1); }
+.spine-labels span.done { color: var(--sage); }
+.spine-labels span.current { color: var(--accent); font-weight: 600; }
+
+/* ==== file detail with task rail ==== */
+.detail-with-rail {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  align-items: start;
+}
+.detail-with-rail.rail-collapsed {
+  grid-template-columns: 1fr 40px;
+}
+@media (max-width: 760px) {
+  .detail-with-rail,
+  .detail-with-rail.rail-collapsed {
+    grid-template-columns: 1fr;
+  }
+}
+.task-rail {
+  background: var(--bg-card);
+  border: 1px solid var(--rule-soft);
+  border-radius: 8px;
+  padding: 16px 14px;
+  position: sticky;
+  top: 16px;
+  transition: padding 200ms;
+}
+.task-rail.rail-collapsed { padding: 16px 8px; cursor: pointer; }
+.task-rail.rail-collapsed .task-rail-body { display: none; }
+.task-rail.rail-collapsed .task-rail-head {
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.task-rail.rail-collapsed .task-rail-head .heb-stack {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+.task-rail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.task-rail-head h3 {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+  direction: rtl;
+}
+.task-rail-head .en {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 1px;
+}
+.task-rail-collapse {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--ink-3);
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+}
+.task-rail-collapse:hover { background: var(--bg-sunken); color: var(--ink); }
+
+.task-list { display: flex; flex-direction: column; gap: 6px; }
+.task {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--rule-soft);
+  border-radius: 4px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.35;
+  position: relative;
+  cursor: pointer;
+}
+.task input[type="checkbox"] {
+  margin-top: 2px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.task.done { background: var(--bg); }
+.task.done .task-body { color: var(--ink-3); text-decoration: line-through; }
+.task-body { flex: 1; font-family: 'Cormorant Garamond', serif; font-size: 14px; color: var(--ink-1); }
+.task-due {
+  font-size: 10px;
+  color: var(--ink-3);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.06em;
+  margin-top: 3px;
+}
+.task-add {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px dashed var(--rule);
+  border-radius: 4px;
+  margin-top: 4px;
+  cursor: text;
+}
+.task-add input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+/* ==== workflows section ==== */
+.workflow-card {
+  background: var(--bg-card);
+  border: 1px solid var(--rule-soft);
+  border-radius: 8px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  display: grid;
+  gap: 12px;
+}
+.workflow-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.workflow-name {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+.workflow-name .heb {
+  font-size: 16px;
+  color: var(--ink-3);
+  margin-left: 10px;
+}
+.workflow-template-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 3px;
+  border: 1px solid var(--accent);
+}
+.workflow-phases {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.workflow-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--rule-soft);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--ink-1);
+}
+.workflow-phase-num {
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  color: var(--bg-card-hi);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+}
+[data-theme="sacred"] .workflow-phase-num { color: var(--bg); }
+.workflow-phase .remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-3);
+  font-size: 11px;
+  padding: 0 2px;
+}
+.workflow-phase .remove:hover { color: var(--accent); }
+.workflow-options {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--ink-2);
+  align-items: center;
+}
+.workflow-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
