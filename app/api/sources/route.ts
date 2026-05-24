@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const res = await fetch('https://www.sefaria.org/api/search-wrapper', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: q, type: 'text', field: 'naive_lemmatizer', size, sort_type: 'relevance' }),
+      body: JSON.stringify({ query: q, type: 'text', field: 'naive_lemmatizer', size, sort_type: 'relevance', source_proj: true }),
     });
 
     if (!res.ok) return NextResponse.json({ results: [], error: `Sefaria ${res.status}` });

@@ -169,20 +169,14 @@ export default function App() {
     try {
       const params = new URLSearchParams({ q, size: '20' });
       if (cat && cat !== 'all') params.set('category', cat);
-      const url = `/api/sources?${params}`;
-      console.log('[Library] Fetching:', url);
-      const res = await fetch(url);
-      console.log('[Library] Response status:', res.status);
-      const text = await res.text();
-      console.log('[Library] Response body:', text.substring(0, 200));
-      const data = JSON.parse(text);
-      if (data.results && data.results.length > 0) {
+      const res = await fetch(`/api/sources?${params}`);
+      const data = await res.json();
+      if (data.results?.length > 0) {
         setLibResults(data.results);
       } else {
         setLibError(data.error || `No results found for "${q}"`);
       }
     } catch (e: any) {
-      console.error('[Library] Fetch error:', e);
       setLibError(e.message);
     }
     finally { setLibSearching(false); }
