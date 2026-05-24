@@ -50,6 +50,14 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       if (!encounter.generatedContent) encounter.generatedContent = [];
       encounter.generatedContent.push(updates.addGenerated);
     }
+    if (updates.addSource) {
+      if (!encounter.sources) encounter.sources = [];
+      encounter.sources.push(updates.addSource);
+    }
+    if (updates.removeSourceRef) {
+      encounter.sources = (encounter.sources || []).filter((s: any) => s.ref !== updates.removeSourceRef);
+    }
+    if (updates.sources !== undefined) encounter.sources = updates.sources;
     encounter.updatedAt = new Date().toISOString();
 
     await redis.set(itemKey(session.userId, id), JSON.stringify(encounter));

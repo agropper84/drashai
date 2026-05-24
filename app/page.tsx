@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 // ─── Types ───────────────────────────────────────────────
+interface EncounterSource { ref: string; heRef?: string; he: string; en: string; note?: string; addedAt: string }
+
 interface Encounter {
   id: string;
   congregantName: string;
@@ -14,6 +16,7 @@ interface Encounter {
   sealed?: boolean;
   transcript: string;
   notes: string;
+  sources?: EncounterSource[];
   generatedContent?: { type: string; content: string; generatedAt: string }[];
   createdAt: string;
   updatedAt: string;
@@ -408,6 +411,8 @@ export default function App() {
       // Gather sparks if included
       const sparkContext = vars.includes('sparks') && sparks.length > 0
         ? sparks.map(s => `[${s.tag}] ${s.body}`).join('\n') : undefined;
+      const sourcesContext = vars.includes('sources') && activeFile.sources?.length
+        ? activeFile.sources.map(s => `[${s.ref}]\n${s.he}\n${s.en}`).join('\n\n') : undefined;
       const res = await fetch('/api/rav/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -415,7 +420,7 @@ export default function App() {
           notes: vars.includes('notes') ? activeFile.notes : undefined,
           type: draftType, instructions: draftInstructions.trim() || undefined,
           congregantName: activeFile.congregantName,
-          customPrompt, templateBody, styleExcerpts, sparkContext,
+          customPrompt, templateBody, styleExcerpts, sparkContext, sourcesContext,
         }),
       });
       if (!res.ok) throw new Error('Generation failed');
@@ -634,14 +639,15 @@ export default function App() {
                 {[
                   { key: 'transcript', en: 'Conversation', heb: 'שיחה' },
                   { key: 'documents', en: 'Documents', heb: 'מסמכים' },
-                  { key: 'sources', en: 'Sources', heb: 'מקורות' },
+                  { key: 'sources', en: 'Sources', heb: 'מקורות', count: activeFile.sources?.length },
                   { key: 'insights', en: 'Insights', heb: 'ניצוצות' },
                   { key: 'draft', en: 'Draft', heb: 'טיוטה' },
                   { key: 'final', en: 'Final', heb: 'סופי' },
-                ].map(tab => (
+                ].map((tab: { key: string; en: string; heb: string; count?: number }) => (
                   <button key={tab.key} className={`tab ${activeTab === tab.key ? 'active' : ''}`}
                     onClick={() => setActiveTab(tab.key as FileTab)}>
                     <span className="en">{tab.en}</span>
+                    {tab.count ? <span className="count">{tab.count}</span> : null}
                   </button>
                 ))}
               </div>
@@ -879,19 +885,59 @@ export default function App() {
               {activeTab === 'sources' && (
                 <div>
                   <div className="section-head">
-                    <div><h2 className="section-title">מקורות</h2><div className="section-title-en">Sources</div></div>
-                    <button className="btn small" onClick={() => setShowSources(true)}><span className="icon">{I.search}</span> Find Source</button>
+                    <div>
+                      <h2 className="section-title">מקורות</h2>
+                      <div className="section-title-en">Sources</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn small" onClick={() => setShowSources(true)}>
+                        <span className="icon">{I.search}</span> Find Source
+                      </button>
+                      <button className="btn small" onClick={() => { setView('library'); setOpenFileId(null); }}>
+                        <span className="icon">{I.book}</span> Library
+                      </button>
+                    </div>
                   </div>
-                  <div className="empty-state" style={{ padding: 40 }}>
-                    <p style={{ fontSize: 18 }}>No sources linked yet</p>
-                    <p style={{ fontSize: 14, marginTop: 8 }}>Search Torah, Talmud, Midrash and personal library to attach relevant texts</p>
-                    <button className="btn primary" style={{ marginTop: 16 }} onClick={() => setShowSources(true)}>
-                      <span className="icon">{I.search}</span> Search Sources
-                    </button>
-                    <p style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 12 }}>
-                      <span className="kbd">⌘K</span> to search from anywhere
-                    </p>
-                  </div>
+
+                  {(activeFile.sources?.length || 0) > 0 ? (
+                    <div className="source-list">
+                      {activeFile.sources!.map((s, i) => (
+                        <div key={i} className="source-card">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div className="source-cite">{s.ref}</div>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              <button className="btn ghost small" title="Copy" onClick={() => handleCopy(`${s.ref}\n${s.he}\n${s.en}`)}>
+                                <span className="icon" style={{ width: 12, height: 12 }}>{I.copy}</span>
+                              </button>
+                              <button className="btn ghost small" title="Remove" onClick={async () => {
+                                await fetch(`/api/rav/encounters/${openFileId}`, {
+                                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ removeSourceRef: s.ref }),
+                                });
+                                fetchEncounters();
+                              }}>
+                                <span className="icon" style={{ width: 12, height: 12 }}>{I.trash}</span>
+                              </button>
+                            </div>
+                          </div>
+                          {s.he && <div className="source-heb">{s.he}</div>}
+                          {s.en && <div className="source-en">{s.en}</div>}
+                          {s.note && <div className="source-note">{s.note}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-state" style={{ padding: 40 }}>
+                      <p style={{ fontSize: 18 }}>No sources linked yet</p>
+                      <p style={{ fontSize: 14, marginTop: 8 }}>Search Torah, Talmud, Midrash and personal library to attach relevant texts</p>
+                      <button className="btn primary" style={{ marginTop: 16 }} onClick={() => setShowSources(true)}>
+                        <span className="icon">{I.search}</span> Search Sources
+                      </button>
+                      <p style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 12 }}>
+                        <span className="kbd">⌘K</span> to search from anywhere
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1959,10 +2005,15 @@ export default function App() {
                     if (openFileId) {
                       await fetch(`/api/rav/encounters/${openFileId}`, {
                         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ appendTranscript: `\n\n[Source: ${s.ref}]\n${s.he}\n${s.en}` }),
+                        body: JSON.stringify({ addSource: { ref: s.ref, heRef: s.heRef, he: s.he, en: s.en, addedAt: new Date().toISOString() } }),
                       });
                       fetchEncounters();
                     }
+                    // Also save to personal library
+                    setLibSaved(prev => {
+                      if (prev.some(x => x.ref === s.ref)) return prev;
+                      return [{ ref: s.ref, he: s.he, en: s.en, savedAt: new Date().toISOString() }, ...prev];
+                    });
                   }}>Attach</button>
                 </div>
               ))}

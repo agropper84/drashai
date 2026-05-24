@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const session = await getSessionFromCookies();
     if (!session.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const { transcript, notes, type, instructions, congregantName, customPrompt, templateBody, styleExcerpts, sparkContext } = await req.json();
+    const { transcript, notes, type, instructions, congregantName, customPrompt, templateBody, styleExcerpts, sparkContext, sourcesContext } = await req.json();
 
     if (!transcript?.trim()) {
       return NextResponse.json({ error: 'Transcript is required' }, { status: 400 });
@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
     if (transcript) contextSections += `\nENCOUNTER TRANSCRIPT:\n${transcript}\n`;
     if (notes) contextSections += `\nRABBI'S PRIVATE NOTES:\n${notes}\n`;
     if (sparkContext) contextSections += `\nRELATED SPARKS & INSIGHTS:\n${sparkContext}\n`;
+    if (sourcesContext) contextSections += `\nATTACHED TORAH/TALMUD SOURCES (incorporate these references):\n${sourcesContext}\n`;
     if (styleExcerpts) contextSections += `\nSTYLE REFERENCE (match this tone, voice, and structure):\n${styleExcerpts}\n`;
     if (templateBody) contextSections += `\nTEMPLATE STRUCTURE (follow this skeleton, filling in content):\n${templateBody}\n`;
 
