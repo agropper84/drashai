@@ -1918,29 +1918,17 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Prompts */}
+              {/* Prompts note — moved to Templates */}
               <div className="settings-section">
                 <h2 className="settings-h">הנחיות</h2>
                 <div className="settings-h-en">Prompts</div>
                 <div className="settings-block">
-                  <p style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 16 }}>
-                    Customize the AI prompts used for each document type. Use <code className="mono" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--bg-sunken)', borderRadius: 3 }}>{'{{transcript}}'}</code> for the conversation and <code className="mono" style={{ fontSize: 10, padding: '1px 4px', background: 'var(--bg-sunken)', borderRadius: 3 }}>{'{{subject}}'}</code> for the congregant name.
+                  <p style={{ fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.5 }}>
+                    AI generation prompts are now managed per template. Open any template to edit its prompt, style examples, and context variables.
                   </p>
-                  {[
-                    { label: 'Eulogy (Hesped)', key: 'hesped' },
-                    { label: 'Sermon (Drasha)', key: 'drasha' },
-                    { label: 'Source Finding', key: 'sources' },
-                    { label: 'Pastoral Letter', key: 'letter' },
-                  ].map(p => (
-                    <div key={p.key} style={{ marginBottom: 16 }}>
-                      <div className="settings-label" style={{ marginBottom: 6 }}>{p.label}</div>
-                      <div className="prompt-block" contentEditable suppressContentEditableWarning
-                        style={{ minHeight: 60 }}>
-                        {'Based on the following encounter transcript with {{subject}}, create a ' + p.label.toLowerCase() + ' that draws on themes from the conversation and incorporates relevant Torah references...'}
-                      </div>
-                    </div>
-                  ))}
-                  <button className="btn ghost small" style={{ marginTop: 4 }}>Restore defaults</button>
+                  <button className="btn small" style={{ marginTop: 12 }} onClick={() => { setView('templates'); setOpenFileId(null); }}>
+                    <span className="icon">{I.templ}</span> Go to Templates
+                  </button>
                 </div>
               </div>
 
