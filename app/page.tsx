@@ -526,8 +526,8 @@ export default function App() {
         <div className="brand">
           <div className="brand-mark">{hebrewInitials(userName) || 'דא'}</div>
           <div className="nav-label">
-            <div className="brand-name">Drashai</div>
-            <div className="brand-sub">דרשאי</div>
+            <div className="brand-name heb-display" style={{ fontSize: 24 }}>דרשאי</div>
+            <div className="brand-sub" style={{ textTransform: 'none', letterSpacing: '0.04em' }}>drashai</div>
           </div>
         </div>
 
