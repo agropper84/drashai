@@ -1922,3 +1922,108 @@ button.spine-dot:hover { transform: scale(1.25); }
   gap: 6px;
   cursor: pointer;
 }
+/* Plan 3 — append to app/globals.css */
+
+/* ==== overflow menu ==== */
+.overflow-menu-wrap { position: relative; display: inline-block; }
+.overflow-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 180px;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  box-shadow: var(--shadow-lift);
+  padding: 4px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  animation: overflowMenuFadeIn 120ms ease-out;
+}
+@keyframes overflowMenuFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.overflow-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink-1);
+  text-align: left;
+  transition: background 80ms;
+}
+.overflow-menu-item:hover { background: var(--bg-sunken); }
+.overflow-menu-item.destructive { color: var(--accent); }
+.overflow-menu-item.destructive:hover { background: var(--accent-soft); }
+.overflow-menu-icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+}
+.overflow-menu-item.destructive .overflow-menu-icon { color: var(--accent); }
+.overflow-menu-label { flex: 1; }
+.overflow-menu-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-3);
+  letter-spacing: 0.06em;
+}
+.overflow-menu-divider {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--rule-soft);
+}
+
+/* ==== confirm dialog destructive button ==== */
+.btn.destructive {
+  background: var(--accent);
+  color: var(--bg-card-hi);
+  border-color: var(--accent);
+}
+.btn.destructive:hover:not(:disabled) {
+  background: var(--accent-hi);
+  border-color: var(--accent-hi);
+}
+.btn.destructive:disabled {
+  background: var(--bg-sunken);
+  color: var(--ink-3);
+  border-color: var(--rule-soft);
+  cursor: not-allowed;
+}
+[data-theme="sacred"] .btn.destructive { color: var(--bg); }
+
+/* slightly more dramatic shroud for destructive confirm */
+.confirm-dialog { border-color: var(--accent); }
+
+/* ==== toast (lifted from Plan 2 — re-declared for clarity) ==== */
+.drashai-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink-1);
+  color: var(--bg-card-hi);
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px;
+  box-shadow: var(--shadow-lift);
+  z-index: 100;
+  animation: toastIn 200ms ease-out;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}

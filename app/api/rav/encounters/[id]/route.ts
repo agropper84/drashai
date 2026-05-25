@@ -77,6 +77,9 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     }
     if (updates.workflowId !== undefined) encounter.workflowId = updates.workflowId;
     if (updates.phase !== undefined) encounter.phase = updates.phase;
+    // Plan 3: archive/unarchive
+    if (updates.archive === true) encounter.archivedAt = new Date().toISOString();
+    if (updates.unarchive === true) { delete encounter.archivedAt; }
     encounter.updatedAt = new Date().toISOString();
 
     await redis.set(itemKey(session.userId, id), JSON.stringify(encounter));

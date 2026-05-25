@@ -21,11 +21,12 @@ export interface RavEncounter {
 const listKey = (userId: string) => `rav:${userId}:encounters`;
 const itemKey = (userId: string, id: string) => `rav:${userId}:encounter:${id}`;
 
-// GET — list all encounters for current user
-export async function GET() {
+// GET — list encounters (excludes archived by default)
+export async function GET(req: NextRequest) {
   try {
     const session = await getSessionFromCookies();
     if (!session.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    const includeArchived = req.nextUrl.searchParams.get('includeArchived') === 'true';
 
     const redis = getRedis();
     const listData = await redis.get(listKey(session.userId));
@@ -44,9 +45,11 @@ export async function GET() {
       }
     }
 
+    // Filter archived unless requested
+    const filtered = includeArchived ? encounters : encounters.filter(e => !(e as any).archivedAt);
     // Sort newest first
-    encounters.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    return NextResponse.json({ encounters });
+    filtered.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return NextResponse.json({ encounters: filtered });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

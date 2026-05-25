@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { I } from '@/app/_components/Icons';
 import { ViewToggle } from '@/app/_components/ViewToggle';
+import { ConfirmDialog } from '@/app/_components/ConfirmDialog';
 import { useTheme } from '@/app/_lib/theme';
 import { useWorkflows } from '@/app/_lib/workflows-store';
 import { useTemplates } from '@/app/_lib/templates-store';
+import { useEncounters } from '@/app/_lib/encounters-store';
 import { api } from '@/app/_lib/api';
-import type { Workflow } from '@/app/_lib/types';
+import type { Encounter, Workflow } from '@/app/_lib/types';
 
 type SettingsTab = 'keys' | 'transcription' | 'appearance' | 'workflows' | 'privacy' | 'account';
 
@@ -239,19 +241,7 @@ export default function SettingsPage() {
       )}
 
       {/* ── Account ── */}
-      {tab === 'account' && (
-        <div className="settings-section">
-          <div className="settings-block">
-            <div className="settings-row">
-              <div>
-                <div className="settings-label">Signed in as {userName || 'User'}</div>
-                <div className="settings-help">via Google OAuth</div>
-              </div>
-              <a href="/api/auth/logout" className="btn small" style={{ color: 'var(--accent)' }}>Sign Out</a>
-            </div>
-          </div>
-        </div>
-      )}
+      {tab === 'account' && <AccountSection userName={userName} />}
     </>
   );
 }
@@ -364,6 +354,92 @@ function WorkflowsSection() {
         );
       })}
       <button className="btn small" onClick={createNew} style={{ marginTop: 8 }}>+ New workflow</button>
+    </div>
+  );
+}
+
+// ── Account (with archived files from Plan 3) ───────────────
+function AccountSection({ userName }: { userName: string }) {
+  const [archived, setArchived] = useState<Encounter[]>([]);
+  const [loadingArchived, setLoadingArchived] = useState(false);
+  const [eraseOpen, setEraseOpen] = useState(false);
+  const { refresh } = useEncounters();
+
+  const loadArchived = async () => {
+    setLoadingArchived(true);
+    try {
+      const data = await api.encounters.list({ includeArchived: true });
+      setArchived((data.encounters || []).filter((e: Encounter) => !!e.archivedAt));
+    } finally { setLoadingArchived(false); }
+  };
+
+  useEffect(() => { loadArchived(); }, []);
+
+  const restore = async (enc: Encounter) => {
+    await api.encounters.unarchive(enc.id);
+    await refresh();
+    await loadArchived();
+  };
+
+  const eraseAll = async () => {
+    for (const enc of archived) { await api.encounters.delete(enc.id); }
+    setEraseOpen(false);
+    await refresh();
+    await loadArchived();
+  };
+
+  return (
+    <div className="settings-section">
+      <div className="settings-block">
+        <div className="settings-row">
+          <div>
+            <div className="settings-label">Signed in as {userName || 'User'}</div>
+            <div className="settings-help">via Google OAuth</div>
+          </div>
+          <a href="/api/auth/logout" className="btn small" style={{ color: 'var(--accent)' }}>Sign Out</a>
+        </div>
+      </div>
+
+      <div className="settings-block">
+        <div className="settings-row settings-row-stack">
+          <div>
+            <div className="settings-label">Archived files</div>
+            <div className="settings-help">Files archived from their card menu. Hidden from your list but kept indefinitely.</div>
+          </div>
+        </div>
+        {loadingArchived ? (
+          <div className="mono" style={{ color: 'var(--ink-3)', padding: '12px 0' }}>Loading...</div>
+        ) : archived.length === 0 ? (
+          <div style={{ padding: '14px 0', fontStyle: 'italic', color: 'var(--ink-3)', fontSize: 14 }}>No archived files.</div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+              {archived.map((enc) => (
+                <div key={enc.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--bg-card-hi)', border: '1px solid var(--rule-soft)', borderRadius: 4 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: 'Frank Ruhl Libre, serif', fontWeight: 700, fontSize: 16 }}>{enc.subject || enc.congregantName}</div>
+                    <div className="mono" style={{ color: 'var(--ink-3)' }}>Archived {enc.archivedAt ? new Date(enc.archivedAt).toLocaleDateString() : ''}</div>
+                  </div>
+                  <button className="btn ghost small" onClick={() => restore(enc)}>Restore</button>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn destructive small" onClick={() => setEraseOpen(true)}>Erase all archived files...</button>
+            </div>
+          </>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={eraseOpen}
+        title={`Erase all ${archived.length} archived file${archived.length === 1 ? '' : 's'}?`}
+        description="This permanently deletes every archived file. There is no recovery."
+        confirmText="ERASE ALL"
+        confirmLabel="Erase forever"
+        onCancel={() => setEraseOpen(false)}
+        onConfirm={eraseAll}
+      />
     </div>
   );
 }
