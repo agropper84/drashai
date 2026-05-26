@@ -20,6 +20,8 @@ function autoCompletedIndexes(enc: Encounter, workflow: Workflow): number[] {
 
 export function derivePhaseState(enc: Encounter, workflow: Workflow): PhaseState {
   if (workflow.phases.length === 0) return { current: '', completed: [] };
+  // D11: archived files — return all completed, no active pointer
+  if (enc.archivedAt) return { current: '', completed: [...workflow.phases] };
 
   const autoIdx = autoCompletedIndexes(enc, workflow);
   const userCompleted = enc.completedPhases || [];
