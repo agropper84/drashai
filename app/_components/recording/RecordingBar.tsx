@@ -65,6 +65,13 @@ export function RecordingBar() {
         </div>
       </div>
 
+      {/* Volume meter */}
+      {!rec.paused && !ending && (
+        <div className="recording-bar-meter" title="Input level">
+          <div className="recording-bar-meter-fill" style={{ height: `${Math.round(rec.level * 100)}%` }} />
+        </div>
+      )}
+
       <input
         className="recording-bar-label"
         value={labelDraft}

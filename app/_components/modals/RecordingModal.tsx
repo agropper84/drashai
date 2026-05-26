@@ -1,27 +1,20 @@
 'use client';
-// Recording modal — shows VowDialog on first use per file, then skips
-// straight to recording on subsequent uses. Consent stored in localStorage.
+// Recording modal — shows VowDialog once ever, then skips straight to
+// recording on all subsequent uses. Consent stored globally in localStorage.
 
 import { useEffect, useRef } from 'react';
 import { VowDialog } from '../recording/VowDialog';
 import { useRecordingSession } from '../recording/RecordingProvider';
 import { useEncounters } from '@/app/_lib/encounters-store';
 
-const CONSENT_KEY = 'drashai.consent';
+const CONSENT_KEY = 'drashai.consent-given';
 
-function hasConsent(fileId: string): string | null {
-  try {
-    const store = JSON.parse(localStorage.getItem(CONSENT_KEY) || '{}');
-    return store[fileId] || null;
-  } catch { return null; }
+function hasGlobalConsent(): boolean {
+  try { return localStorage.getItem(CONSENT_KEY) === '1'; } catch { return false; }
 }
 
-function saveConsent(fileId: string, name: string) {
-  try {
-    const store = JSON.parse(localStorage.getItem(CONSENT_KEY) || '{}');
-    store[fileId] = name;
-    localStorage.setItem(CONSENT_KEY, JSON.stringify(store));
-  } catch {}
+function saveGlobalConsent() {
+  try { localStorage.setItem(CONSENT_KEY, '1'); } catch {}
 }
 
 export function RecordingModal({ onClose, fileId }: { onClose: () => void; fileId?: string }) {
@@ -31,13 +24,12 @@ export function RecordingModal({ onClose, fileId }: { onClose: () => void; fileI
   const suggestedName = file?.subject || file?.congregantName;
   const autoStarted = useRef(false);
 
-  // If consent was previously given for this file, skip the vow and start immediately.
+  // If consent was previously given, skip the vow and start immediately.
   useEffect(() => {
     if (!fileId || autoStarted.current || rec.session) return;
-    const name = hasConsent(fileId);
-    if (name) {
+    if (hasGlobalConsent()) {
       autoStarted.current = true;
-      rec.begin({ fileId, consentName: name }).then(() => onClose());
+      rec.begin({ fileId, consentName: suggestedName || 'consent' }).then(() => onClose());
     }
   }, [fileId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -60,7 +52,7 @@ export function RecordingModal({ onClose, fileId }: { onClose: () => void; fileI
     );
   }
 
-  // If a recording is already in flight for any file, refuse to start a new one.
+  // If a recording is already in flight, refuse to start a new one.
   if (rec.session) {
     return (
       <div className="modal-shroud" onClick={onClose}>
@@ -80,7 +72,7 @@ export function RecordingModal({ onClose, fileId }: { onClose: () => void; fileI
   }
 
   // If auto-start is pending (consent exists), show nothing briefly.
-  if (hasConsent(fileId)) return null;
+  if (hasGlobalConsent()) return null;
 
   return (
     <VowDialog
@@ -88,7 +80,7 @@ export function RecordingModal({ onClose, fileId }: { onClose: () => void; fileI
       suggestedName={suggestedName}
       onCancel={onClose}
       onConfirmed={async (consentName) => {
-        saveConsent(fileId, consentName);
+        saveGlobalConsent();
         await rec.begin({ fileId, consentName });
         onClose();
       }}

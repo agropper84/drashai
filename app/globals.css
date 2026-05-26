@@ -2803,6 +2803,23 @@ button.spine-dot:hover { transform: scale(1.25); }
 .recording-bar-btn.end:hover { background: var(--accent); color: var(--bg-card-hi); }
 [data-theme="sacred"] .recording-bar-btn.end:hover { color: var(--bg); }
 
+/* recording bar volume meter */
+.recording-bar-meter {
+  width: 4px; height: 28px;
+  background: var(--bg-sunken);
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex; flex-direction: column-reverse;
+  flex-shrink: 0;
+}
+.recording-bar-meter-fill {
+  width: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: height 80ms ease-out;
+  min-height: 2px;
+}
+
 /* recording bar waveform — soft movement to show recording is live */
 .recording-bar-waves {
   display: flex; align-items: center; gap: 2px;
@@ -3470,25 +3487,78 @@ button.spine-dot:hover { transform: scale(1.25); }
 .fd-section-title .heb { font-size: 16px; color: var(--ink-3); font-weight: 500; }
 .fd-section-title .accent-line { flex: 1; height: 1px; background: var(--rule-soft); }
 
-.fd-transcript { display: flex; flex-direction: column; gap: 22px; }
+.fd-transcript { display: flex; flex-direction: column; gap: 6px; }
 .fd-utterance {
-  display: grid; grid-template-columns: 90px 1fr; gap: 24px;
+  display: grid; grid-template-columns: auto 1fr auto; gap: 10px;
+  align-items: flex-start;
+  padding: 6px 8px; border-radius: 4px;
+  transition: background 160ms;
 }
+.fd-utterance:hover { background: var(--bg-sunken); }
 .fd-utt-meta {
+  display: flex; align-items: center;
+  min-width: 80px;
+}
+.fd-utt-speaker-btn {
+  background: transparent; border: 1px solid var(--rule-soft);
+  border-radius: 999px; padding: 3px 10px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px; color: var(--ink-4);
-  letter-spacing: 0.06em; padding-top: 6px;
+  font-size: 10px; letter-spacing: 0.04em;
+  cursor: pointer; transition: all 160ms;
+  white-space: nowrap;
 }
-.fd-utt-meta-speaker {
-  display: block; color: var(--accent);
-  font-style: normal; font-weight: 600;
-  margin-top: 2px;
-  font-family: 'Cormorant Garamond', serif;
-  text-transform: none; letter-spacing: 0; font-size: 12px;
+.fd-utt-speaker-btn:hover { border-color: var(--ink-3); }
+.fd-speaker-1 { color: #2563eb; border-color: #93bbfd; background: #eef4ff; }
+.fd-speaker-2 { color: #b45309; border-color: #f0c77a; background: #fef8ee; }
+.fd-speaker-3 { color: #7c3aed; border-color: #c4b5fd; background: #f3f0ff; }
+.fd-speaker-none {
+  color: var(--ink-4); border-style: dashed;
+  font-size: 12px; padding: 3px 8px;
 }
+[data-theme="warm"][data-mode="dark"] .fd-speaker-1,
+[data-theme="cool"][data-mode="dark"] .fd-speaker-1,
+[data-theme="sacred"][data-mode="dark"] .fd-speaker-1 {
+  color: #93bbfd; background: rgba(37, 99, 235, 0.12); border-color: rgba(37, 99, 235, 0.3);
+}
+[data-theme="warm"][data-mode="dark"] .fd-speaker-2,
+[data-theme="cool"][data-mode="dark"] .fd-speaker-2,
+[data-theme="sacred"][data-mode="dark"] .fd-speaker-2 {
+  color: #f0c77a; background: rgba(180, 83, 9, 0.12); border-color: rgba(180, 83, 9, 0.3);
+}
+.fd-utt-text-wrap { flex: 1; min-width: 0; }
 .fd-utt-text {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 18px; line-height: 1.6; color: var(--ink);
+  font-size: 16px; line-height: 1.6; color: var(--ink);
+  cursor: text;
+}
+.fd-utt-text:hover { color: var(--ink); }
+.fd-utt-actions {
+  display: flex; gap: 4px; opacity: 0;
+  transition: opacity 160ms;
+  padding-top: 2px;
+}
+.fd-utterance:hover .fd-utt-actions { opacity: 1; }
+.fd-utt-action {
+  background: transparent; border: none;
+  color: var(--ink-4); cursor: pointer;
+  padding: 4px; border-radius: 3px;
+  display: flex; align-items: center;
+  transition: all 120ms;
+}
+.fd-utt-action:hover { color: var(--ink-2); background: var(--bg); }
+.fd-utt-action.delete:hover { color: var(--accent); }
+.fd-utt-edit { width: 100%; }
+.fd-utt-edit-input {
+  width: 100%; background: var(--bg);
+  border: 1px solid var(--accent); border-radius: 4px;
+  padding: 6px 10px; outline: none;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px; line-height: 1.5; color: var(--ink);
+  resize: none;
+}
+.fd-utt-edit-actions {
+  display: flex; gap: 4px; justify-content: flex-end;
+  margin-top: 4px;
 }
 
 .fd-notes-block {
