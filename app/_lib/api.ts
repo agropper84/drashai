@@ -66,12 +66,17 @@ export const api = {
 
   settings: {
     get: () =>
-      fetch('/api/settings').then(json<{ hasClaudeKey: boolean; name?: string }>),
-    save: (body: Record<string, string>) =>
+      fetch('/api/settings').then(json<{
+        hasClaudeKey: boolean; hasElevenLabsKey?: boolean;
+        name?: string; email?: string;
+        aiModel?: string; aiMaxTokens?: number;
+        [key: string]: unknown;
+      }>),
+    save: (body: Record<string, string | number>) =>
       fetch('/api/settings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-      }),
+      }).then(json<{ success: boolean; keyResults?: Record<string, { ok: boolean; error?: string }> }>),
   },
   sources: {
     search: (q: string, category?: string, mode: 'auto' | 'keyword' | 'smart' = 'auto', depth: 'normal' | 'deep' = 'normal') => {
@@ -87,10 +92,11 @@ export const api = {
         body: JSON.stringify({ question, sources }),
       }),
   },
-  transcribe: (audio: Blob, mode = 'encounter') => {
+  transcribe: (audio: Blob, mode = 'encounter', language = 'auto') => {
     const form = new FormData();
     form.append('audio', audio, `recording-${Date.now()}.webm`);
     form.append('mode', mode);
+    if (language && language !== 'auto') form.append('language', language);
     return fetch('/api/transcribe-elevenlabs', { method: 'POST', body: form })
       .then(json<{ text: string }>);
   },

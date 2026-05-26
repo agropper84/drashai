@@ -1,7 +1,9 @@
 'use client';
-// Subtle mic button for the draft paper. Two interaction modes:
-//   Tap:  toggle recording on/off — inserts raw transcription
-//   Hold: record while held, release auto-processes (transcribe + refine + insert)
+// Draft dictation mic with two interaction modes and language toggle:
+//   Tap on/off:  ElevenLabs transcription with basic cleanup (filler removal, punctuation)
+//   Hold & release: ElevenLabs transcription + AI refinement via Claude
+//
+// Language toggle: switch between English (en) and Hebrew (he) for transcription.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '@/app/_lib/api';
@@ -12,10 +14,14 @@ import {
 } from '@/app/_lib/dictation-settings';
 
 type Stage = 'idle' | 'recording' | 'processing';
+type DictLang = 'en' | 'he';
+
+const LANG_STORAGE_KEY = 'drashai.dictation-lang';
 
 export function DraftMic({ onInsert }: { onInsert: (text: string) => void }) {
   const [stage, setStage] = useState<Stage>('idle');
   const [level, setLevel] = useState(0);
+  const [lang, setLang] = useState<DictLang>('en');
   const holdRef = useRef(false);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -24,6 +30,20 @@ export function DraftMic({ onInsert }: { onInsert: (text: string) => void }) {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const levelRafRef = useRef<number | null>(null);
   const shouldRefineRef = useRef(false);
+
+  // Persist language choice
+  useEffect(() => {
+    const stored = localStorage.getItem(LANG_STORAGE_KEY);
+    if (stored === 'he' || stored === 'en') setLang(stored);
+  }, []);
+
+  const toggleLang = useCallback(() => {
+    setLang((prev) => {
+      const next = prev === 'en' ? 'he' : 'en';
+      localStorage.setItem(LANG_STORAGE_KEY, next);
+      return next;
+    });
+  }, []);
 
   useEffect(() => () => {
     if (levelRafRef.current) cancelAnimationFrame(levelRafRef.current);
@@ -98,7 +118,7 @@ export function DraftMic({ onInsert }: { onInsert: (text: string) => void }) {
 
     setStage('processing');
     try {
-      const { text } = await api.transcribe(blob, 'dictation');
+      const { text } = await api.transcribe(blob, 'dictation', lang);
       const s = loadDictationSettings();
       let processed = text;
       if (s.removeFillerWords) processed = removeFillers(processed, s.fillerWords);
@@ -120,10 +140,10 @@ export function DraftMic({ onInsert }: { onInsert: (text: string) => void }) {
       onInsert(processed);
     } catch {}
     setStage('idle');
-  }, [onInsert, stopLevel]);
+  }, [onInsert, stopLevel, lang]);
 
-  // Tap: toggle on/off (no refinement)
-  // Hold (>300ms): record while held, refine on release
+  // Tap: toggle on/off (transcription + basic cleanup, no AI refinement)
+  // Hold (>300ms): record while held, AI refinement on release
   const handlePointerDown = useCallback(() => {
     if (stage === 'processing') return;
 
@@ -158,30 +178,42 @@ export function DraftMic({ onInsert }: { onInsert: (text: string) => void }) {
   const ringScale = stage === 'recording' ? 1 + level * 0.6 : 1;
 
   return (
-    <button
-      className={`draft-mic${stage === 'recording' ? ' recording' : ''}${stage === 'processing' ? ' processing' : ''}`}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={() => {
-        // If pointer leaves while holding, treat as release
-        if (holdRef.current && stage === 'recording') {
-          if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; }
-          stopAndProcess(true);
-        }
-      }}
-      title={stage === 'idle' ? 'Tap to dictate · hold for auto-refine' : stage === 'recording' ? 'Tap to stop' : 'Processing…'}
-      disabled={stage === 'processing'}
-    >
-      <span className="draft-mic-ring" style={{ transform: `scale(${ringScale})` }} />
-      {stage === 'processing' ? (
-        <span className="draft-mic-dots"><span/><span/><span/></span>
-      ) : (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
-          <path d="M19 10v2a7 7 0 01-14 0v-2"/>
-          <line x1="12" y1="19" x2="12" y2="23"/>
-        </svg>
-      )}
-    </button>
+    <div className="draft-mic-group">
+      {/* Language toggle */}
+      <button
+        className={`draft-mic-lang${stage === 'recording' ? ' recording' : ''}`}
+        onClick={toggleLang}
+        title={`Dictating in ${lang === 'en' ? 'English' : 'Hebrew'} — click to switch`}
+        disabled={stage === 'processing'}
+      >
+        {lang === 'en' ? 'EN' : 'עב'}
+      </button>
+
+      {/* Mic button */}
+      <button
+        className={`draft-mic${stage === 'recording' ? ' recording' : ''}${stage === 'processing' ? ' processing' : ''}${holdRef.current && stage === 'recording' ? ' holding' : ''}`}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={() => {
+          if (holdRef.current && stage === 'recording') {
+            if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; }
+            stopAndProcess(true);
+          }
+        }}
+        title={stage === 'idle' ? 'Tap to dictate · hold for auto-refine' : stage === 'recording' ? (holdRef.current ? 'Release to refine' : 'Tap to stop') : 'Processing…'}
+        disabled={stage === 'processing'}
+      >
+        <span className="draft-mic-ring" style={{ transform: `scale(${ringScale})` }} />
+        {stage === 'processing' ? (
+          <span className="draft-mic-dots"><span/><span/><span/></span>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+            <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+          </svg>
+        )}
+      </button>
+    </div>
   );
 }
