@@ -58,6 +58,11 @@ export default function DraftTab() {
   const [streamed, setStreamed] = useState('');
   const [helperOpen, setHelperOpen] = useState(false);
   const { zen, toggle: toggleZen } = useZenMode();
+  const [zenWidth, setZenWidth] = useState(() => {
+    if (typeof window === 'undefined') return 640;
+    const stored = localStorage.getItem('drashai.zenWidth');
+    return stored ? Number(stored) : 640;
+  });
   const [editingGenIdx, setEditingGenIdx] = useState<number | null>(null);
   const [editingGenContent, setEditingGenContent] = useState('');
 
@@ -66,12 +71,22 @@ export default function DraftTab() {
   const [translateMode, setTranslateMode] = useState<'all' | 'selection'>('all');
   const [translateDir, setTranslateDir] = useState<Direction>('auto');
   const [copied, setCopied] = useState(false);
+  const [frozenSource, setFrozenSource] = useState<string | null>(null);
 
   const selection = useSelection();
   const debouncedDraft = useDebounce(userDraft, 800);
 
-  // Determine source text for translation
-  const translateSource = translateMode === 'selection' ? selection.text : debouncedDraft;
+  // Determine source text for translation — freeze after insert to avoid re-translating
+  const rawSource = translateMode === 'selection' ? selection.text : debouncedDraft;
+  const translateSource = frozenSource !== null ? frozenSource : rawSource;
+
+  // Unfreeze when the user types something different from the frozen+inserted text
+  useEffect(() => {
+    if (frozenSource !== null && rawSource !== frozenSource) {
+      setFrozenSource(null);
+    }
+  }, [rawSource, frozenSource]);
+
   const effectiveDir: Direction = translateDir === 'auto'
     ? (detectIsHebrew(translateSource) ? 'he-en' : 'en-he')
     : translateDir;
@@ -108,6 +123,8 @@ export default function DraftTab() {
 
   const handleInsert = useCallback(() => {
     if (!translated) return;
+    // Freeze current source so inserting doesn't re-trigger translation
+    setFrozenSource(translateSource);
     const ta = textareaRef.current;
     if (ta) {
       const pos = ta.selectionStart ?? userDraft.length;
@@ -118,10 +135,11 @@ export default function DraftTab() {
     } else {
       setUserDraft((prev) => prev ? prev + '\n\n' + translated : translated);
     }
-  }, [translated, userDraft]);
+  }, [translated, userDraft, translateSource]);
 
   const handleReplace = useCallback(() => {
     if (!translated || !selection.text) return;
+    setFrozenSource(translateSource);
     const idx = userDraft.indexOf(selection.text);
     if (idx === -1) return;
     setUserDraft(userDraft.slice(0, idx) + translated + userDraft.slice(idx + selection.text.length));
@@ -198,11 +216,30 @@ export default function DraftTab() {
   const showStreamed = !!streamed;
 
   return (
-    <div className={zen ? 'fd-zen' : undefined}>
+    <div
+      className={zen ? 'fd-zen' : undefined}
+      style={zen ? { '--zen-width': `${zenWidth}px` } as React.CSSProperties : undefined}
+    >
       {zen && (
-        <button className="fd-zen-exit" onClick={toggleZen} title="Exit zen mode (⌘.)">
-          ESC
-        </button>
+        <div className="fd-zen-controls">
+          <input
+            type="range"
+            className="fd-zen-width-slider"
+            min={480}
+            max={1200}
+            step={40}
+            value={zenWidth}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              setZenWidth(v);
+              localStorage.setItem('drashai.zenWidth', String(v));
+            }}
+            title={`Text width: ${zenWidth}px`}
+          />
+          <button className="fd-zen-exit" onClick={toggleZen} title="Exit zen mode (⌘.)">
+            ESC
+          </button>
+        </div>
       )}
       <div className={translateActive && !zen ? 'fd-draft-split' : undefined}>
         <div className="fd-paper" data-selectable="true">

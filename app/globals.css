@@ -3831,7 +3831,7 @@ button.spine-dot:hover { transform: scale(1.25); }
 .fd-draft-split {
   display: flex; gap: 16px;
   max-width: 1200px; margin: 0 auto;
-  align-items: flex-start;
+  align-items: stretch;
 }
 .fd-draft-split > .fd-paper {
   flex: 1; min-width: 0;
@@ -3839,7 +3839,8 @@ button.spine-dot:hover { transform: scale(1.25); }
 }
 .fd-translate-paper {
   flex: 1; min-width: 0;
-  overflow-y: auto; max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  display: flex; flex-direction: column;
 }
 .fd-translate-paper .fd-paper-meta {
   position: static; display: flex;
@@ -4129,7 +4130,7 @@ button.spine-dot:hover { transform: scale(1.25); }
   animation: zen-fade-in 400ms ease-out;
 }
 .fd-zen .fd-paper {
-  max-width: 640px; width: 100%;
+  max-width: var(--zen-width, 640px); width: 100%;
   flex: none;
   border: none;
   box-shadow: none;
@@ -4137,6 +4138,7 @@ button.spine-dot:hover { transform: scale(1.25); }
   padding: 48px 32px 120px;
   border-radius: 0;
   min-height: 100vh;
+  transition: max-width 200ms ease;
 }
 .fd-zen .fd-paper-meta {
   opacity: 0;
@@ -4172,23 +4174,48 @@ button.spine-dot:hover { transform: scale(1.25); }
 .fd-zen:hover .fd-helper {
   opacity: 1;
 }
-/* Subtle exit button in top-right corner, appears on hover */
-.fd-zen .fd-zen-exit {
+/* Zen controls — top-right, appear on hover */
+.fd-zen-controls {
   position: fixed; top: 20px; right: 24px;
   z-index: 47;
+  display: flex; align-items: center; gap: 10px;
+  opacity: 0;
+  transition: opacity 400ms;
+}
+.fd-zen:hover .fd-zen-controls { opacity: 1; }
+
+.fd-zen-width-slider {
+  width: 100px; height: 3px;
+  -webkit-appearance: none; appearance: none;
+  background: var(--rule-soft); border-radius: 2px;
+  outline: none; cursor: pointer;
+}
+.fd-zen-width-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 12px; height: 12px;
+  background: var(--ink-3); border-radius: 50%;
+  cursor: pointer; border: none;
+  transition: background 160ms;
+}
+.fd-zen-width-slider::-webkit-slider-thumb:hover {
+  background: var(--ink-1);
+}
+.fd-zen-width-slider::-moz-range-thumb {
+  width: 12px; height: 12px;
+  background: var(--ink-3); border-radius: 50%;
+  cursor: pointer; border: none;
+}
+
+.fd-zen-exit {
   background: transparent; border: 1px solid transparent;
   color: var(--ink-4);
   font-size: 11px; font-family: 'JetBrains Mono', monospace;
   letter-spacing: 0.08em;
   padding: 6px 14px; border-radius: 999px;
   cursor: pointer;
-  opacity: 0;
-  transition: all 400ms;
+  transition: all 200ms;
 }
-.fd-zen:hover .fd-zen-exit {
-  opacity: 1;
-}
-.fd-zen .fd-zen-exit:hover {
+.fd-zen-exit:hover {
   border-color: var(--rule-soft);
   color: var(--ink-2);
 }
