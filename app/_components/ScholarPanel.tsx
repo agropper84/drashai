@@ -151,6 +151,15 @@ export function ScholarPanel() {
               style={{ alignSelf: 'flex-end' }}>
               {isWorking ? '...' : 'Ask'}
             </button>
+            {(question || answer) && !isWorking && (
+              <button
+                className="btn ghost small"
+                onClick={handleReset}
+                style={{ alignSelf: 'flex-end' }}
+                title="Clear">
+                <span className="icon" style={{ width: 14, height: 14 }}>×</span>
+              </button>
+            )}
           </div>
 
           {/* Status indicators */}
