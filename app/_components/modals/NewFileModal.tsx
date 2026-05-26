@@ -3,14 +3,20 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useEncounters } from '@/app/_lib/encounters-store';
 import { useTemplates } from '@/app/_lib/templates-store';
+import { I } from '../Icons';
 
 export function NewFileModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const { create } = useEncounters();
-  const { templates } = useTemplates();
+  const { templates, setTemplates } = useTemplates();
   const [type, setType] = useState('hesped');
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // Inline "add custom type" state
+  const [addingType, setAddingType] = useState(false);
+  const [newHeb, setNewHeb] = useState('');
+  const [newEn, setNewEn] = useState('');
 
   const handleCreate = async () => {
     if (!name.trim()) return;
@@ -28,6 +34,33 @@ export function NewFileModal({ onClose }: { onClose: () => void }) {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleAddType = () => {
+    if (!newEn.trim()) return;
+    const id = newEn.trim().toLowerCase().replace(/\s+/g, '_');
+    // Don't add duplicates
+    if (templates.some((t) => t.id === id)) {
+      setType(id);
+      setAddingType(false);
+      return;
+    }
+    setTemplates((prev) => [
+      ...prev,
+      {
+        id,
+        heb: newHeb.trim() || newEn.trim(),
+        en: newEn.trim(),
+        sections: '',
+        desc: '',
+        prompt: `Based on the encounter transcript and notes, create a ${newEn.trim().toLowerCase()} that is well-structured, thoughtful, and appropriate for the context. Draw on relevant themes, sources, and insights from the conversation.`,
+        variables: ['transcript', 'notes', 'sparks', 'sources'],
+      },
+    ]);
+    setType(id);
+    setAddingType(false);
+    setNewHeb('');
+    setNewEn('');
   };
 
   return (
@@ -50,6 +83,51 @@ export function NewFileModal({ onClose }: { onClose: () => void }) {
               </span>
             </button>
           ))}
+
+          {!addingType ? (
+            <button
+              className="btn small"
+              style={{ justifyContent: 'flex-start', borderStyle: 'dashed' }}
+              onClick={() => setAddingType(true)}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ink-3)', fontSize: 13 }}>
+                <span style={{ width: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{I.plus}</span>
+                Add type
+              </span>
+            </button>
+          ) : (
+            <div className="nf-add-type">
+              <input
+                className="nf-add-type-input"
+                value={newHeb}
+                onChange={(e) => setNewHeb(e.target.value)}
+                placeholder="עברית"
+                style={{ direction: 'rtl', fontFamily: "'Frank Ruhl Libre', serif" }}
+                autoFocus
+              />
+              <input
+                className="nf-add-type-input"
+                value={newEn}
+                onChange={(e) => setNewEn(e.target.value)}
+                placeholder="English name"
+                onKeyDown={(e) => e.key === 'Enter' && handleAddType()}
+              />
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                  className="btn ghost small"
+                  style={{ padding: '4px 8px', fontSize: 11 }}
+                  onClick={() => { setAddingType(false); setNewHeb(''); setNewEn(''); }}>
+                  Cancel
+                </button>
+                <button
+                  className="btn primary small"
+                  style={{ padding: '4px 8px', fontSize: 11 }}
+                  onClick={handleAddType}
+                  disabled={!newEn.trim()}>
+                  Add
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <input
@@ -57,7 +135,7 @@ export function NewFileModal({ onClose }: { onClose: () => void }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Name (e.g., Goldberg Family)"
-          autoFocus
+          autoFocus={!addingType}
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
         />
 

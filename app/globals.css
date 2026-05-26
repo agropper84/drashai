@@ -4283,3 +4283,19 @@ button.spine-dot:hover { transform: scale(1.25); }
 .help-shortcuts td:first-child {
   width: 60px; text-align: center;
 }
+
+/* ==== New file: add type inline ==== */
+.nf-add-type {
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--bg); border: 1px dashed var(--rule);
+  border-radius: 6px; padding: 8px 10px;
+}
+.nf-add-type-input {
+  width: 100%; background: transparent;
+  border: none; border-bottom: 1px solid var(--rule-soft);
+  outline: none; padding: 4px 0;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px; color: var(--ink);
+}
+.nf-add-type-input:focus { border-bottom-color: var(--accent); }
+.nf-add-type-input::placeholder { color: var(--ink-4); font-style: italic; }
