@@ -1,11 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getSessionFromCookies } from '@/lib/session';
-import { getUserClaudeApiKey } from '@/lib/kv';
+import { getUserClaudeApiKey, getUserSettings } from '@/lib/kv';
+import { MODELS, DEFAULT_AI_CONFIG, type AIConfig } from '@/lib/models';
 
-export const MODELS = {
-  SONNET: 'claude-sonnet-4-6',
-  HAIKU: 'claude-haiku-4-5-20251001',
-} as const;
+export { MODELS } from '@/lib/models';
 
 export async function getClient(): Promise<Anthropic> {
   const session = await getSessionFromCookies();
@@ -18,15 +16,32 @@ export async function getClient(): Promise<Anthropic> {
   return new Anthropic({ apiKey: envKey });
 }
 
+/** Load user's AI model + token preferences from settings. Falls back to defaults. */
+export async function getUserAIConfig(): Promise<AIConfig> {
+  try {
+    const session = await getSessionFromCookies();
+    if (!session.userId) return DEFAULT_AI_CONFIG;
+    const settings = await getUserSettings(session.userId);
+    if (!settings) return DEFAULT_AI_CONFIG;
+    return {
+      model: (settings.aiModel as string) || DEFAULT_AI_CONFIG.model,
+      maxTokens: (settings.aiMaxTokens as number) || DEFAULT_AI_CONFIG.maxTokens,
+    };
+  } catch {
+    return DEFAULT_AI_CONFIG;
+  }
+}
+
 /** Simple non-streaming helper. Returns the text content of a single message. */
 export async function askClaude(
   prompt: string,
   opts?: { maxTokens?: number; model?: string },
 ): Promise<string> {
   const client = await getClient();
+  const config = await getUserAIConfig();
   const msg = await client.messages.create({
-    model: opts?.model || MODELS.SONNET,
-    max_tokens: opts?.maxTokens || 4096,
+    model: opts?.model || config.model,
+    max_tokens: opts?.maxTokens || config.maxTokens,
     messages: [{ role: 'user', content: prompt }],
   });
   const block = msg.content[0];

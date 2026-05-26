@@ -4,6 +4,17 @@
 export type FileTab = 'conversation' | 'documents' | 'sources' | 'insights' | 'draft' | 'final';
 export type CardView = 'detailed' | 'minimal';
 
+export interface EncounterDocument {
+  name: string;
+  url: string;
+  size: string;
+  type: string;
+  /** AI-extracted text content. */
+  extractedText?: string;
+  /** For images: kept alongside extracted description. */
+  isImage?: boolean;
+  addedAt: string;
+}
 export interface EncounterSource { ref: string; heRef?: string; he: string; en: string; note?: string; addedAt: string; }
 export interface GeneratedContent { type: string; content: string; generatedAt: string; }
 export interface Moment { t: number; label?: string; createdAt: string; }
@@ -28,6 +39,7 @@ export interface Encounter {
   archivedAt?: string;
   transcript: string;
   notes: string;
+  documents?: EncounterDocument[];
   sources?: EncounterSource[];
   generatedContent?: GeneratedContent[];
   moments?: Moment[];

@@ -30,6 +30,11 @@ export default function LoginPage() {
         <p className="mono" style={{ marginTop: 20, fontSize: 10, color: 'var(--ink-3)', letterSpacing: '0.1em' }}>
           Secure login via Google OAuth
         </p>
+        <p style={{ marginTop: 12, fontSize: 11, color: 'var(--ink-3)' }}>
+          <a href="/privacy" style={{ color: 'var(--ink-2)' }}>Privacy Policy</a>
+          {' · '}
+          <a href="/terms" style={{ color: 'var(--ink-2)' }}>Terms of Service</a>
+        </p>
       </div>
     </div>
   );

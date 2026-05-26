@@ -1,15 +1,14 @@
 'use client';
-// Library — Sefaria search + personal sources + folders + suggested searches.
-// Preserves your recent additions: folders, URL/upload to library, deletable
-// suggested-search chips, "show all" toggle, per-source folder picker, per-source
-// copy-to-sparks, per-source copy-to-file.
+// Library — Sefaria search + personal sources + folders + suggested searches + Scholar.
 
+import { useRef, useState } from 'react';
 import { I } from '@/app/_components/Icons';
 import { useLibrary } from '@/app/_lib/library-store';
 import { useEncounters } from '@/app/_lib/encounters-store';
 import { useSparks } from '@/app/_lib/sparks-store';
 import { api } from '@/app/_lib/api';
 import type { LibraryResult, SavedSource } from '@/app/_lib/types';
+import { ScholarPanel } from '@/app/_components/ScholarPanel';
 
 export default function LibraryPage() {
   const {
@@ -124,6 +123,9 @@ export default function LibraryPage() {
           </button>
         </div>
       </div>
+
+      {/* Scholar */}
+      <ScholarPanel />
 
       {/* Search */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>

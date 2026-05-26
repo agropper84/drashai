@@ -20,6 +20,7 @@ import { useWorkflows } from '@/app/_lib/workflows-store';
 import { useTemplates } from '@/app/_lib/templates-store';
 import { useEncounters } from '@/app/_lib/encounters-store';
 import { api } from '@/app/_lib/api';
+import { MODEL_PRESETS, TOKEN_PRESETS, DEFAULT_AI_CONFIG } from '@/lib/models';
 import type { Encounter, Workflow, FileTab } from '@/app/_lib/types';
 
 const TABS: FileTab[] = ['conversation', 'documents', 'sources', 'insights', 'draft', 'final'];
@@ -41,6 +42,11 @@ export default function SettingsPage() {
   const [claudeKeyStatus, setClaudeKeyStatus] = useState<{ ok: boolean; error?: string } | null>(null);
   const [elevenKeyStatus, setElevenKeyStatus] = useState<{ ok: boolean; error?: string } | null>(null);
 
+  // AI Model
+  const [aiModel, setAiModel] = useState(DEFAULT_AI_CONFIG.model);
+  const [aiMaxTokens, setAiMaxTokens] = useState(DEFAULT_AI_CONFIG.maxTokens);
+  const [aiSaved, setAiSaved] = useState(false);
+
   // Transcription
   const [noiseReduction, setNoiseReduction] = useState(false);
   const [transcriptionLang, setTranscriptionLang] = useState('auto');
@@ -52,6 +58,8 @@ export default function SettingsPage() {
         setHasClaudeKey(!!d.hasClaudeKey);
         setHasElevenLabsKey(!!d.hasElevenLabsKey);
         if (d.name) setUserName(d.name);
+        if (d.aiModel) setAiModel(d.aiModel as string);
+        if (d.aiMaxTokens) setAiMaxTokens(d.aiMaxTokens as number);
       }
     }).catch(() => {});
   }, []);
@@ -91,7 +99,7 @@ export default function SettingsPage() {
       {/* Tabs */}
       <div className="tabs" style={{ marginBottom: 24 }}>
         {([
-          { key: 'keys', en: 'API Keys' },
+          { key: 'keys', en: 'AI & API Keys' },
           { key: 'transcription', en: 'Transcription' },
           { key: 'dictation', en: 'Dictation' },
           { key: 'appearance', en: 'Appearance' },
@@ -150,6 +158,52 @@ export default function SettingsPage() {
             <div className="privacy-vow" style={{ marginTop: 14 }}>
               <div className="privacy-vow-title"><span className="icon" style={{ width: 12, height: 12 }}>{I.lock}</span> Security</div>
               <p style={{ fontSize: 14 }}>API keys are stored encrypted. They never leave the server and are only used to make API calls on your behalf.</p>
+            </div>
+          </div>
+
+          {/* AI Model Configuration */}
+          <div className="settings-block" style={{ marginTop: 20 }}>
+            <div className="settings-label" style={{ marginBottom: 14 }}>AI Model</div>
+            <div className="settings-row settings-row-stack">
+              <div>
+                <div className="settings-label">Model</div>
+                <div className="settings-help">Choose which Claude model powers generation, search, and synthesis.</div>
+              </div>
+              <select
+                className="input"
+                style={{ marginTop: 8 }}
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value)}>
+                {MODEL_PRESETS.map((m) => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="settings-row settings-row-stack">
+              <div>
+                <div className="settings-label">Max tokens per query</div>
+                <div className="settings-help">Higher limits allow longer responses but cost more. Standard (4,096) is recommended for most use.</div>
+              </div>
+              <select
+                className="input"
+                style={{ marginTop: 8 }}
+                value={aiMaxTokens}
+                onChange={(e) => setAiMaxTokens(Number(e.target.value))}>
+                {TOKEN_PRESETS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <button
+                className="btn primary"
+                onClick={async () => {
+                  await api.settings.save({ aiModel, aiMaxTokens: String(aiMaxTokens) });
+                  setAiSaved(true);
+                  setTimeout(() => setAiSaved(false), 2000);
+                }}>
+                {aiSaved ? '✓ Saved' : 'Save AI Settings'}
+              </button>
             </div>
           </div>
         </div>
@@ -522,6 +576,44 @@ function DictationSection() {
 
   return (
     <div className="settings-section">
+      {/* Desktop App */}
+      <div className="settings-block" style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 10,
+            background: 'var(--accent)', display: 'grid', placeItems: 'center', flexShrink: 0,
+          }}>
+            <svg width="24" height="24" viewBox="0 0 100 100" fill="none">
+              <path d="M 8 22 C 28 16, 60 17, 84 24 C 88 28, 82 32, 70 33 L 22 31 C 12 30, 8 26, 8 22 Z" fill="#f0e7d2"/>
+              <path d="M 73 32 L 84 32 L 80 70 L 76 86 Q 72 95, 68 86 L 65 70 Z" fill="#f0e7d2"/>
+              <circle cx="74.5" cy="93" r="2.6" fill="#d9b46a"/>
+            </svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="settings-label" style={{ fontSize: 15 }}>Verbatim for Rabbis</div>
+            <div className="settings-help" style={{ marginTop: 4 }}>
+              macOS menu-bar app — press a hotkey to dictate anywhere on your Mac. 130+ Hebrew, Aramaic, and halachic terms built in. Works in any app.
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center' }}>
+              <a
+                href="https://github.com/agropper84/medscribe/releases/latest"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn primary small">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}>
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Download for macOS
+              </a>
+              <span className="mono" style={{ fontSize: 9, color: 'var(--ink-4)', letterSpacing: '0.06em' }}>MACOS 13+</span>
+            </div>
+            <div className="settings-help" style={{ marginTop: 8, fontSize: 12 }}>
+              Unzip → drag to Applications → open once → grant Accessibility permission in System Settings.
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div style={{
         padding: '14px 18px', background: 'var(--bg-card-hi)',
         border: '1px solid var(--rule-soft)', borderRadius: 6,

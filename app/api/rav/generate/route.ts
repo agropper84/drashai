@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
-import { getClient, MODELS } from '@/lib/ai';
+import { getClient, getUserAIConfig } from '@/lib/ai';
 
 export const maxDuration = 120;
 
@@ -95,9 +95,10 @@ ${congregantName ? `CONGREGANT/SUBJECT NAME: ${congregantName}` : ''}
 Generate the ${type.replace('_', ' ')} now.`;
 
     const client = await getClient();
+    const aiConfig = await getUserAIConfig();
     const stream = client.messages.stream({
-      model: MODELS.SONNET,
-      max_tokens: 4096,
+      model: aiConfig.model,
+      max_tokens: aiConfig.maxTokens,
       temperature: 0.7,
       messages: [{ role: 'user', content: userPrompt }],
     });

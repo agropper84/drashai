@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
-import { getClient, MODELS } from '@/lib/ai';
+import { getClient, getUserAIConfig } from '@/lib/ai';
 
 export const maxDuration = 120;
 
@@ -47,8 +47,8 @@ Write a thorough, well-organized answer based exclusively on these sources.`;
   try {
     const client = await getClient();
     const stream = client.messages.stream({
-      model: MODELS.SONNET,
-      max_tokens: 4096,
+      model: (await getUserAIConfig()).model,
+      max_tokens: (await getUserAIConfig()).maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     });

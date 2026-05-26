@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
-import { getClient, MODELS } from '@/lib/ai';
+import { getClient, getUserAIConfig } from '@/lib/ai';
 
 export const maxDuration = 60;
 
@@ -41,7 +41,7 @@ Respond in a warm, collegial tone — one rabbi advising another.`;
   try {
     const client = await getClient();
     const stream = client.messages.stream({
-      model: MODELS.SONNET,
+      model: (await getUserAIConfig()).model,
       max_tokens: 1024,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],

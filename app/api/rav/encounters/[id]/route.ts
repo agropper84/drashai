@@ -71,6 +71,19 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
         encounter.generatedContent = encounter.generatedContent.filter((_: any, i: number) => i !== idx);
       }
     }
+    if (updates.addDocument) {
+      if (!encounter.documents) encounter.documents = [];
+      encounter.documents.push(updates.addDocument);
+    }
+    if (updates.removeDocument !== undefined) {
+      encounter.documents = (encounter.documents || []).filter((_: any, i: number) => i !== updates.removeDocument);
+    }
+    if (updates.updateDocument !== undefined) {
+      const { index, extractedText } = updates.updateDocument;
+      if (encounter.documents && encounter.documents[index]) {
+        encounter.documents[index].extractedText = extractedText;
+      }
+    }
     if (updates.addSource) {
       if (!encounter.sources) encounter.sources = [];
       encounter.sources.push(updates.addSource);

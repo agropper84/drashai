@@ -25,10 +25,22 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
             <h3>Recording &amp; Transcription</h3>
             <p>Record encounters directly in the app. Audio is transcribed automatically using ElevenLabs Scribe.</p>
             <ul>
-              <li><strong>Start recording</strong> &mdash; open a file and tap the microphone icon, or use the global recording bar.</li>
+              <li><strong>Start recording</strong> &mdash; open a file and tap the microphone icon. Consent is required once, then subsequent recordings start immediately.</li>
               <li><strong>Speaker diarization</strong> &mdash; the transcription identifies different speakers automatically.</li>
-              <li><strong>Moment markers</strong> &mdash; while recording, tap the star to mark important moments with a timestamp.</li>
-              <li><strong>Dictation mic</strong> &mdash; on the Draft tab, use the small mic icon to dictate text directly into your draft.</li>
+              <li><strong>Moment markers</strong> &mdash; while recording, tap the flag icon to mark important moments with a label and timestamp.</li>
+              <li><strong>Recording bar</strong> &mdash; a global bar at the bottom-right shows elapsed time, a live waveform, and input level. Survives navigation between pages.</li>
+            </ul>
+          </section>
+
+          <section className="help-section">
+            <h3>Dictation</h3>
+            <p>Dictate directly into your draft using the mic icon in the paper&rsquo;s top-right corner.</p>
+            <ul>
+              <li><strong>Tap on/off</strong> &mdash; tap the mic to start recording, tap again to stop. Transcribes with basic cleanup (filler removal, spoken punctuation conversion).</li>
+              <li><strong>Hold &amp; release</strong> &mdash; hold the mic for 300ms+ then release. This records while held and automatically runs AI refinement on release &mdash; fixing terminology, cleaning grammar, and formatting the text.</li>
+              <li><strong>Language toggle</strong> &mdash; click the language indicator (EN/עב) next to the mic to switch between English and Hebrew transcription.</li>
+              <li><strong>Settings</strong> &mdash; customize in Settings → Dictation: refinement prompt, dictionary (130+ rabbinical terms), filler word list, spoken punctuation, insert mode (append or replace).</li>
+              <li><strong>Verbatim desktop app</strong> &mdash; for system-wide dictation on macOS, download Verbatim for Rabbis from Settings → Dictation. Press a hotkey to dictate into any app on your Mac.</li>
             </ul>
           </section>
 
@@ -38,9 +50,23 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
             <ul>
               <li><strong>Keyword search</strong> &mdash; short queries search Sefaria directly.</li>
               <li><strong>Smart search</strong> &mdash; paste longer text or ask a question. AI decomposes your query into targeted searches, fetches results in parallel, and ranks them by relevance.</li>
+              <li><strong>Deep search</strong> &mdash; toggle &ldquo;Deep&rdquo; next to the search button for a thorough multi-source dive. Uses broader decomposition (8&ndash;12 search terms), follow-up angles, related text expansion, and Sonnet-powered ranking. Returns up to 30 results.</li>
+              <li><strong>Synthesize</strong> &mdash; after a search returns results, click &ldquo;Synthesize answer&rdquo; to get a streaming AI synthesis with inline source citations.</li>
               <li><strong>Attach sources</strong> &mdash; from search results, use the dropdown to attach a source to any file.</li>
               <li><strong>Highlight to search</strong> &mdash; select text anywhere, then click &ldquo;Find sources&rdquo; in the floating menu. The source search opens pre-filled with your selection.</li>
               <li><strong>Library</strong> &mdash; save sources to your personal library, organized by folder.</li>
+            </ul>
+          </section>
+
+          <section className="help-section">
+            <h3>Scholar</h3>
+            <p>The Scholar panel (at the top of the Library page) provides comprehensive, source-cited answers to rabbinical questions &mdash; like OpenEvidence for Torah scholarship.</p>
+            <ul>
+              <li><strong>Ask a question</strong> &mdash; type any question about Jewish law, theology, history, or practice. Example: &ldquo;Why do we wear a kippah?&rdquo;</li>
+              <li><strong>Deep research</strong> &mdash; Scholar performs a deep search across Torah, Talmud, Midrash, Halacha, and commentaries, finding 20&ndash;30+ relevant sources.</li>
+              <li><strong>Structured synthesis</strong> &mdash; the answer is organized by source layer: Biblical foundation → Talmudic discussion → Rishonim → Acharonim → contemporary practice. Different opinions are presented with their holders and reasoning.</li>
+              <li><strong>Inline citations</strong> &mdash; every claim cites its source (e.g., &ldquo;Shabbat 156b&rdquo;). Click &ldquo;Show sources&rdquo; to expand the full source list with relevance explanations.</li>
+              <li><strong>Copy &amp; reuse</strong> &mdash; copy the answer for use in sermons, shiurim, or further research.</li>
             </ul>
           </section>
 
@@ -114,9 +140,12 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
           <section className="help-section">
             <h3>Settings</h3>
             <ul>
-              <li><strong>API Keys</strong> &mdash; add your Anthropic (Claude) and ElevenLabs API keys. Keys are validated on save.</li>
-              <li><strong>Theme</strong> &mdash; choose Warm (parchment), Cool (slate), or Sacred (deep blue/gold), each with light and dark variants.</li>
-              <li><strong>Transcription</strong> &mdash; configure language, speaker count, and noise reduction for ElevenLabs Scribe.</li>
+              <li><strong>AI &amp; API Keys</strong> &mdash; add your Anthropic (Claude) and ElevenLabs API keys. Choose your preferred AI model (Sonnet, Opus, Haiku) and set the max tokens per query.</li>
+              <li><strong>Transcription</strong> &mdash; configure language, noise reduction, and recording retention for ElevenLabs Scribe.</li>
+              <li><strong>Dictation</strong> &mdash; customize the refinement prompt, rabbinical dictionary (130+ terms), filler words, spoken punctuation, and insert mode. Download the Verbatim desktop app for system-wide dictation.</li>
+              <li><strong>Appearance</strong> &mdash; choose Warm (parchment), Cool (slate), or Sacred (deep blue/gold), each with light and dark mode. Set zen mode default.</li>
+              <li><strong>Workflows</strong> &mdash; define phase sequences paired with templates for structured pastoral care.</li>
+              <li><strong>Privacy</strong> &mdash; configure pastoral seal defaults and auto-redaction for exports.</li>
             </ul>
           </section>
 
