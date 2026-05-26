@@ -67,6 +67,12 @@ export interface Workflow {
   phaseTabMap?: Partial<Record<string, FileTab>>;
 }
 
-export interface LibraryResult { ref: string; heRef: string; he: string; en: string; categories: string[]; }
+export interface LibraryResult {
+  ref: string; heRef: string; he: string; en: string; categories: string[];
+  /** AI-generated explanation of why this result matches (smart search only). */
+  relevance?: string;
+  /** How the result was found (smart search only). */
+  matchType?: 'keyword' | 'reference' | 'topic' | 'related';
+}
 export interface SavedSource { ref: string; he: string; en: string; savedAt: string; url?: string; type?: string; folder?: string; }
 export interface SuggestedSearch { label: string; q: string; }

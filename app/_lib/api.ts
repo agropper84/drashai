@@ -74,10 +74,10 @@ export const api = {
       }),
   },
   sources: {
-    search: (q: string, category?: string) => {
-      const params = new URLSearchParams({ q, size: '20' });
+    search: (q: string, category?: string, mode: 'auto' | 'keyword' | 'smart' = 'auto') => {
+      const params = new URLSearchParams({ q, size: '20', mode });
       if (category && category !== 'all') params.set('category', category);
-      return fetch(`/api/sources?${params}`).then(json<{ results?: LibraryResult[]; error?: string }>);
+      return fetch(`/api/sources?${params}`).then(json<{ results?: LibraryResult[]; meta?: { mode: string; searches?: string[] }; error?: string }>);
     },
   },
   transcribe: (audio: Blob, mode = 'encounter') => {

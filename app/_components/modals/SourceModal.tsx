@@ -1,8 +1,8 @@
 'use client';
-// Source search modal — Sefaria + personal library. Opens from Draft tab toolbar
-// or from anywhere via useModal().open('sources').
+// Source search modal — supports keyword search AND AI-enhanced semantic search.
+// Paste text, ask a question, or search by keyword.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { I } from '../Icons';
 import { api } from '@/app/_lib/api';
 import type { LibraryResult } from '@/app/_lib/types';
@@ -13,22 +13,72 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
   const [results, setResults] = useState<LibraryResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [tab, setTab] = useState<string>('all');
+  const [searchMode, setSearchMode] = useState<string | null>(null);
+  const [searchTerms, setSearchTerms] = useState<string[] | null>(null);
   const { encounters, patch } = useEncounters();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const didAutoSearch = useRef(false);
 
-  const handleSearch = async (e?: React.FormEvent) => {
+  const handleSearch = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!query.trim()) return;
+    doSearch(query, tab);
+  };
+
+  // Pre-fill from selection (set by SelectionMenu → sessionStorage)
+  useEffect(() => {
+    if (didAutoSearch.current) return;
+    const stashed = sessionStorage.getItem('drashai.selection-query');
+    if (stashed?.trim()) {
+      sessionStorage.removeItem('drashai.selection-query');
+      setQuery(stashed.trim());
+      didAutoSearch.current = true;
+      // Auto-search after a tick so state is set
+      setTimeout(() => {
+        doSearch(stashed.trim());
+      }, 0);
+    }
+  }, []);
+
+  // Extracted search logic so it can be called from both form submit and auto-search
+  const doSearch = useCallback(async (q: string, cat?: string) => {
+    if (!q.trim()) return;
     setSearching(true);
     setResults([]);
+    setSearchMode(null);
+    setSearchTerms(null);
     try {
-      const data = await api.sources.search(query, tab === 'all' ? undefined : tab);
+      const data = await api.sources.search(q, cat === 'all' ? undefined : cat);
       if (data.results) setResults(data.results);
+      if (data.meta) {
+        setSearchMode(data.meta.mode);
+        setSearchTerms(data.meta.searches || null);
+      }
     } catch (err) {
       console.error('[SourceModal] search failed:', err);
     } finally {
       setSearching(false);
     }
+  }, []);
+
+  // Auto-expand textarea on input and when pre-filled
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setQuery(e.target.value);
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
   };
+
+  // Resize textarea when query is set programmatically
+  useEffect(() => {
+    if (textareaRef.current && query) {
+      const el = textareaRef.current;
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+    }
+  }, [query]);
+
+  const isSmartSearch = searchMode === 'smart';
+  const hasRelevance = results.some((r) => r.relevance);
 
   return (
     <div className="modal-shroud" onClick={onClose}>
@@ -38,19 +88,24 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
         <div className="modal-title-en">Search Tanakh, Talmud, Midrash...</div>
 
         <form className="search-row" onSubmit={handleSearch} style={{ marginTop: 16 }}>
-          <input
-            className="search-input"
+          <textarea
+            ref={textareaRef}
+            className="search-input source-search-textarea"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Topic, keyword, or reference (Genesis 1:1)"
+            onChange={handleInput}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSearch(); }
+            }}
+            placeholder="Paste text, ask a question, or search by keyword..."
+            rows={2}
             autoFocus
           />
-          <button type="submit" className="btn primary" disabled={searching}>
+          <button type="submit" className="btn primary" disabled={searching} style={{ alignSelf: 'flex-end' }}>
             <span className="icon">{I.search}</span>
           </button>
         </form>
 
-        <div style={{ display: 'flex', gap: 4, marginBottom: 16, overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 16, overflowX: 'auto', alignItems: 'center' }}>
           {['all', 'tanakh', 'talmud', 'midrash', 'commentary'].map((cat) => (
             <button
               key={cat}
@@ -60,18 +115,42 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
               {cat.charAt(0).toUpperCase() + cat.slice(1)}
             </button>
           ))}
+          {isSmartSearch && (
+            <span className="source-smart-badge">AI-enhanced</span>
+          )}
         </div>
 
+        {/* Show decomposed search terms for transparency */}
+        {searchTerms && searchTerms.length > 0 && (
+          <div className="source-search-terms">
+            {searchTerms.map((t, i) => (
+              <span key={i} className="source-search-term">{t}</span>
+            ))}
+          </div>
+        )}
+
         <div style={{ maxHeight: 420, overflow: 'auto' }}>
-          {searching && <div className="mono" style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)' }}>Searching...</div>}
+          {searching && (
+            <div className="mono" style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)' }}>
+              {query.split(/\s+/).length > 3 ? 'Searching with AI…' : 'Searching...'}
+            </div>
+          )}
           {!searching && results.length === 0 && query && (
             <div className="empty-state" style={{ padding: 24 }}>No results.</div>
           )}
           {results.map((s, i) => (
             <div key={i} className="source-card" style={{ marginBottom: 8 }}>
-              <div className="source-cite">{s.ref}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <div className="source-cite">{s.ref}</div>
+                {s.matchType && s.matchType !== 'keyword' && (
+                  <span className="source-match-type">{s.matchType}</span>
+                )}
+              </div>
               {s.he && <div className="source-heb">{s.he}</div>}
               {s.en && <div className="source-en">{s.en}</div>}
+              {s.relevance && (
+                <div className="source-relevance">{s.relevance}</div>
+              )}
               {encounters.length > 0 && (
                 <div style={{ marginTop: 8 }}>
                   <select

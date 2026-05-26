@@ -59,6 +59,18 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
       if (!encounter.generatedContent) encounter.generatedContent = [];
       encounter.generatedContent.push(updates.addGenerated);
     }
+    if (updates.updateGenerated !== undefined) {
+      const { index, content } = updates.updateGenerated;
+      if (encounter.generatedContent && encounter.generatedContent[index]) {
+        encounter.generatedContent[index].content = content;
+      }
+    }
+    if (updates.removeGenerated !== undefined) {
+      const idx = updates.removeGenerated;
+      if (encounter.generatedContent) {
+        encounter.generatedContent = encounter.generatedContent.filter((_: any, i: number) => i !== idx);
+      }
+    }
     if (updates.addSource) {
       if (!encounter.sources) encounter.sources = [];
       encounter.sources.push(updates.addSource);

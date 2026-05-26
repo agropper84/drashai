@@ -57,8 +57,9 @@ export async function POST(req: NextRequest) {
 
     const { transcript, notes, type, instructions, congregantName, customPrompt, templateBody, styleExcerpts, sparkContext, sourcesContext, userDraft, preserveLevel } = await req.json();
 
-    if (!transcript?.trim()) {
-      return NextResponse.json({ error: 'Transcript is required' }, { status: 400 });
+    // At least one content source is required
+    if (!transcript?.trim() && !notes?.trim() && !userDraft?.trim()) {
+      return NextResponse.json({ error: 'At least one source (transcript, notes, or draft) is required' }, { status: 400 });
     }
     if (!type || !PROMPTS[type]) {
       return NextResponse.json({ error: `Invalid type. Choose from: ${Object.keys(PROMPTS).join(', ')}` }, { status: 400 });

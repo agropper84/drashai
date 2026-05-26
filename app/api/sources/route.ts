@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
+import { searchKeyword } from '@/lib/sefaria';
+import { classifyQuery, smartSearch } from '@/lib/source-search';
 
 export const maxDuration = 30;
 
@@ -9,32 +11,24 @@ export async function GET(req: NextRequest) {
 
   const q = req.nextUrl.searchParams.get('q') || '';
   const size = parseInt(req.nextUrl.searchParams.get('size') || '20');
+  const mode = req.nextUrl.searchParams.get('mode') || 'auto';
   if (!q.trim()) return NextResponse.json({ results: [] });
 
   try {
-    const res = await fetch('https://www.sefaria.org/api/search-wrapper', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: q, type: 'text', field: 'naive_lemmatizer', size, sort_type: 'relevance', source_proj: true }),
-    });
+    // Determine search path
+    const effective = mode === 'smart' ? 'smart'
+      : mode === 'keyword' ? 'keyword'
+      : classifyQuery(q);
 
-    if (!res.ok) return NextResponse.json({ results: [], error: `Sefaria ${res.status}` });
+    if (effective === 'keyword') {
+      // Direct Sefaria keyword search (existing behavior)
+      const results = await searchKeyword(q, size);
+      return NextResponse.json({ results, meta: { mode: 'keyword' } });
+    }
 
-    const data = await res.json();
-    const hits = data.hits?.hits || [];
-
-    const results = hits.map((hit: any) => {
-      const s = hit._source || {};
-      return {
-        ref: s.ref || '',
-        heRef: s.heRef || '',
-        he: (s.exact || s.naive_lemmatizer || '').replace(/<[^>]*>/g, '').substring(0, 400),
-        en: (hit.highlight?.naive_lemmatizer?.[0] || '').replace(/<\/?b>/g, '**').replace(/<[^>]*>/g, '').substring(0, 400),
-        categories: s.path ? s.path.split('/') : [],
-      };
-    }).filter((r: any) => r.ref);
-
-    return NextResponse.json({ results });
+    // AI-enhanced smart search
+    const { results, meta } = await smartSearch(q, size);
+    return NextResponse.json({ results, meta });
   } catch (e: any) {
     return NextResponse.json({ results: [], error: e.message });
   }
