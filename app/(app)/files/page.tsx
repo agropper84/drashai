@@ -1,47 +1,33 @@
 'use client';
-// Plan 3 — adds Active / Archived filter chips. Archived files are fetched
-// on demand via api.encounters.list({ includeArchived: true }).
 
 import { useEffect, useMemo, useState } from 'react';
 import { I } from '@/app/_components/Icons';
 import { FileCard } from '@/app/_components/files/FileCard';
-import { ViewToggle } from '@/app/_components/ViewToggle';
 import { useEncounters } from '@/app/_lib/encounters-store';
 import { useSparks } from '@/app/_lib/sparks-store';
-import { useWorkflows } from '@/app/_lib/workflows-store';
 import { useModal } from '@/app/_components/modals/ModalProvider';
 import { api } from '@/app/_lib/api';
-import type { CardView, Encounter, Spark } from '@/app/_lib/types';
+import type { Encounter, Spark } from '@/app/_lib/types';
 
 type Filter = 'active' | 'archived';
 
 export default function FilesPage() {
   const { encounters, loading, patch, refresh } = useEncounters();
   const { setSparks } = useSparks();
-  const { workflows } = useWorkflows();
   const { open } = useModal();
 
-  const [view, setView] = useState<CardView>('detailed');
-  const [showSpine, setShowSpine] = useState(true);
+  const [showSpine, setShowSpine] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem('drashai.showSpine') !== '0';
+  });
   const [filter, setFilter] = useState<Filter>('active');
   const [archivedList, setArchivedList] = useState<Encounter[]>([]);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('drashai.cardView') as CardView | null;
-    if (stored) setView(stored);
-    else {
-      const counts: Record<CardView, number> = { detailed: 0, minimal: 0 };
-      workflows.forEach((w) => counts[w.defaultView]++);
-      setView(counts.minimal > counts.detailed ? 'minimal' : 'detailed');
-    }
-  }, [workflows]);
+    localStorage.setItem('drashai.showSpine', showSpine ? '1' : '0');
+  }, [showSpine]);
 
-  useEffect(() => {
-    localStorage.setItem('drashai.cardView', view);
-  }, [view]);
-
-  // When user switches to "Archived", fetch the full archived list.
   useEffect(() => {
     if (filter !== 'archived') return;
     let cancelled = false;
@@ -83,8 +69,6 @@ export default function FilesPage() {
 
   const visible = useMemo(() => {
     if (filter === 'archived') return archivedList;
-    // active list = encounters that aren't archived (server already filters,
-    // but we double-check in case of an optimistic update race).
     return encounters.filter((e) => !e.archivedAt);
   }, [filter, encounters, archivedList]);
 
@@ -101,21 +85,18 @@ export default function FilesPage() {
           <div className="page-title-en">Files</div>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          {view === 'detailed' && filter === 'active' && (
-            <label style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontSize: 12, color: 'var(--ink-3)', cursor: 'pointer',
-            }}>
-              <input
-                type="checkbox"
-                checked={showSpine}
-                onChange={(e) => setShowSpine(e.target.checked)}
-                style={{ accentColor: 'var(--accent)' }}
-              />
-              Show status spine
-            </label>
-          )}
-          <ViewToggle value={view} onChange={setView}/>
+          <label style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontSize: 12, color: 'var(--ink-3)', cursor: 'pointer',
+          }}>
+            <input
+              type="checkbox"
+              checked={showSpine}
+              onChange={(e) => setShowSpine(e.target.checked)}
+              style={{ accentColor: 'var(--accent)' }}
+            />
+            Status spine
+          </label>
           <button className="btn" onClick={() => open('record')}>
             <span className="icon">{I.mic}</span> Quick Record
           </button>
@@ -125,7 +106,6 @@ export default function FilesPage() {
         </div>
       </div>
 
-      {/* Filter chips */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
         <button
           type="button"
@@ -152,7 +132,6 @@ export default function FilesPage() {
             <p style={{ fontSize: 18 }}>No archived files</p>
             <p style={{ fontSize: 14, marginTop: 8, fontStyle: 'italic', color: 'var(--ink-3)' }}>
               When you archive a file from its card menu, it lands here.
-              Archived files are kept forever unless you explicitly erase them in Settings.
             </p>
           </div>
         ) : (
@@ -164,8 +143,7 @@ export default function FilesPage() {
             <FileCard
               key={enc.id}
               encounter={enc}
-              view={view}
-              showSpine={view === 'detailed' ? showSpine : undefined}
+              showSpine={showSpine}
               onSpark={handleSpark}
               onInsight={handleInsight}
               onTask={handleTask}

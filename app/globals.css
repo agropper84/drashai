@@ -4647,6 +4647,89 @@ button.spine-dot:hover { transform: scale(1.25); }
 .nf-add-type-input:focus { border-bottom-color: var(--accent); }
 .nf-add-type-input::placeholder { color: var(--ink-4); font-style: italic; }
 
+/* ==== Unified file card ==== */
+.file-card-unified {
+  cursor: pointer; position: relative; min-height: 200;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 20px 22px 0;
+  display: flex; flex-direction: column;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.file-card-unified:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+.file-card-eyebrow {
+  display: flex; align-items: center; gap: 8;
+  margin-bottom: 12;
+}
+.file-card-type-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-3);
+  padding: 3px 8px; background: var(--bg-sunken);
+  border-radius: 3px; border: 1px solid var(--rule-soft);
+}
+.file-card-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.08em;
+  color: var(--ink-4);
+}
+.file-card-archived {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--ink-3);
+  letter-spacing: 0.08em;
+}
+.file-card-title {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-weight: 700; font-size: 24;
+  line-height: 1.1; color: var(--ink);
+  letter-spacing: -0.005em;
+  margin-bottom: 2px;
+}
+.file-card-title-heb {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 13px; color: var(--ink-3);
+  direction: rtl; margin-top: 2px;
+}
+.file-card-spine {
+  margin-top: 10px;
+}
+.file-card-seal {
+  position: absolute; top: -12px; right: 24px;
+  width: 44px; height: 44px;
+  background: var(--accent); border-radius: 50%;
+  display: grid; place-items: center;
+  color: var(--bg-card-hi);
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 18px; font-weight: 700;
+  transform: rotate(-8deg);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  border: 2px solid var(--bg-card-hi);
+}
+.file-card-footer {
+  margin: 14px -22px 0; padding: 10px 22px;
+  border-top: 1px solid var(--rule-soft);
+  display: flex; align-items: center;
+  justify-content: space-between;
+}
+.file-card-event {
+  font-size: 13px; font-weight: 600;
+}
+.file-card-event-rel {
+  font-size: 11px; color: var(--ink-3);
+  font-style: italic;
+}
+.file-card-phase {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.1em;
+  color: var(--ink-3); text-transform: uppercase;
+}
+
 /* ==== Login page ==== */
 .login-page {
   min-height: 100vh;
