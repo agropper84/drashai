@@ -1,19 +1,47 @@
 'use client';
-// Plan 9 — Modal is now the vow phase only. Once consent is granted, the
-// modal closes and the global RecordingBar takes over.
+// Recording modal — shows VowDialog on first use per file, then skips
+// straight to recording on subsequent uses. Consent stored in localStorage.
 
+import { useEffect, useRef } from 'react';
 import { VowDialog } from '../recording/VowDialog';
 import { useRecordingSession } from '../recording/RecordingProvider';
 import { useEncounters } from '@/app/_lib/encounters-store';
+
+const CONSENT_KEY = 'drashai.consent';
+
+function hasConsent(fileId: string): string | null {
+  try {
+    const store = JSON.parse(localStorage.getItem(CONSENT_KEY) || '{}');
+    return store[fileId] || null;
+  } catch { return null; }
+}
+
+function saveConsent(fileId: string, name: string) {
+  try {
+    const store = JSON.parse(localStorage.getItem(CONSENT_KEY) || '{}');
+    store[fileId] = name;
+    localStorage.setItem(CONSENT_KEY, JSON.stringify(store));
+  } catch {}
+}
 
 export function RecordingModal({ onClose, fileId }: { onClose: () => void; fileId?: string }) {
   const rec = useRecordingSession();
   const { encounters } = useEncounters();
   const file = fileId ? encounters.find((e) => e.id === fileId) : undefined;
   const suggestedName = file?.subject || file?.congregantName;
+  const autoStarted = useRef(false);
 
-  // Guard: this modal requires a fileId to record into. (Quick Record may
-  // call this without one; in that case, prompt to choose or create a file.)
+  // If consent was previously given for this file, skip the vow and start immediately.
+  useEffect(() => {
+    if (!fileId || autoStarted.current || rec.session) return;
+    const name = hasConsent(fileId);
+    if (name) {
+      autoStarted.current = true;
+      rec.begin({ fileId, consentName: name }).then(() => onClose());
+    }
+  }, [fileId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Guard: this modal requires a fileId to record into.
   if (!fileId) {
     return (
       <div className="modal-shroud" onClick={onClose}>
@@ -51,14 +79,17 @@ export function RecordingModal({ onClose, fileId }: { onClose: () => void; fileI
     );
   }
 
+  // If auto-start is pending (consent exists), show nothing briefly.
+  if (hasConsent(fileId)) return null;
+
   return (
     <VowDialog
       fileId={fileId}
       suggestedName={suggestedName}
       onCancel={onClose}
       onConfirmed={async (consentName) => {
-        const ok = await rec.begin({ fileId, consentName });
-        // Modal closes either way; if mic init failed the bar simply won't appear.
+        saveConsent(fileId, consentName);
+        await rec.begin({ fileId, consentName });
         onClose();
       }}
     />

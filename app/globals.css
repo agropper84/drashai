@@ -2724,6 +2724,22 @@ button.spine-dot:hover { transform: scale(1.25); }
 .recording-bar-btn.end:hover { background: var(--accent); color: var(--bg-card-hi); }
 [data-theme="sacred"] .recording-bar-btn.end:hover { color: var(--bg); }
 
+/* recording bar waveform — soft movement to show recording is live */
+.recording-bar-waves {
+  display: flex; align-items: center; gap: 2px;
+  height: 20px;
+}
+.recording-bar-waves span {
+  width: 2px; border-radius: 1px;
+  background: var(--accent);
+  opacity: 0.5;
+  animation: rec-wave 1.4s ease-in-out infinite;
+}
+@keyframes rec-wave {
+  0%, 100% { height: 4px; opacity: 0.3; }
+  50%      { height: 14px; opacity: 0.7; }
+}
+
 @media (max-width: 640px) {
   .recording-bar {
     left: 12px;
@@ -3970,3 +3986,162 @@ button.spine-dot:hover { transform: scale(1.25); }
   font-style: italic; padding: 4px 0;
 }
 .fd-task-add input::placeholder { color: var(--ink-4); }
+
+/* ================================================================
+   MOBILE / iOS  (<640px)
+   ================================================================ */
+
+/* — Bottom tab bar — */
+.mobile-tabs {
+  display: none;
+}
+@media (max-width: 640px) {
+  .mobile-tabs {
+    display: flex;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    z-index: 60;
+    background: color-mix(in srgb, var(--bg-card-hi) 85%, transparent);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--rule-soft);
+    padding: 6px 0 calc(6px + env(safe-area-inset-bottom, 0));
+    justify-content: space-around;
+  }
+  .mobile-tab {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 2px;
+    text-decoration: none;
+    color: var(--ink-3);
+    -webkit-tap-highlight-color: transparent;
+    min-width: 56px; padding: 4px 0;
+    transition: color 160ms;
+  }
+  .mobile-tab.active { color: var(--accent); }
+  .mobile-tab-icon {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .mobile-tab-icon svg { width: 20px; height: 20px; }
+  .mobile-tab-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 0.04em;
+  }
+  .mobile-tab-rec {
+    position: absolute; top: -2px; right: -4px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* Hide desktop sidebar, go single-column */
+  .sidebar { display: none !important; }
+  .app { grid-template-columns: 1fr !important; }
+
+  /* Main content: pad bottom for tab bar */
+  .main-inner {
+    padding: 20px 16px calc(72px + env(safe-area-inset-bottom, 0)) !important;
+  }
+
+  /* Lift fixed elements above tab bar */
+  .fd-helper {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0)) !important;
+    width: min(680px, calc(100% - 24px)) !important;
+  }
+  .recording-bar {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0)) !important;
+  }
+  .fd-tasks-pill {
+    bottom: calc(72px + env(safe-area-inset-bottom, 0)) !important;
+  }
+
+  /* Paper: tighter mobile padding */
+  .fd-paper {
+    padding: 28px 20px !important;
+  }
+  .fd-paper-meta {
+    top: 10px !important; right: 12px !important;
+  }
+
+  /* Modals: full-screen bottom sheet */
+  .modal-shroud {
+    align-items: flex-end !important;
+  }
+  .modal {
+    width: 100% !important; max-width: 100% !important;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 90vh !important;
+    padding: 20px 16px calc(16px + env(safe-area-inset-bottom, 0)) !important;
+  }
+  .modal.wide {
+    max-width: 100% !important;
+  }
+
+  /* Helper panel: bottom sheet style */
+  .fd-helper-panel {
+    border-radius: 14px 14px 0 0 !important;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0)) !important;
+  }
+
+  /* Tabs: scrollable horizontal */
+  .tabs {
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap; gap: 0;
+    margin-bottom: 20px;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    white-space: nowrap; flex-shrink: 0;
+    padding: 10px 12px;
+    min-height: 44px;
+  }
+  .tab .heb { font-size: 15px; }
+  .tab .en { font-size: 11px; }
+
+  /* Page titles */
+  .page-title { font-size: 28px !important; }
+  .file-detail-title { font-size: 28px !important; }
+  .page-head { flex-direction: column; gap: 8px; align-items: flex-start; }
+
+  /* Touch targets */
+  .btn { min-height: 44px; }
+  .nav-item { min-height: 44px; }
+
+  /* Prevent iOS zoom on input focus */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  .fd-paper-textarea {
+    font-size: 16px !important;
+  }
+
+  /* Disable tap highlight on all interactive */
+  button, a, input, textarea, select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Touch-action for cards */
+  .source-card, .spark-card, .file-card {
+    touch-action: manipulation;
+  }
+
+  /* Source chips in helper: wrap nicely */
+  .fd-helper-sources { gap: 4px; }
+  .fd-helper-source-chip { font-size: 11px; padding: 4px 10px 4px 6px; }
+
+  /* Voice stops: smaller */
+  .fd-voice-stop { font-size: 10px; padding: 6px 4px; }
+
+  /* Zen mode: account for safe area */
+  .fd-zen {
+    padding-bottom: env(safe-area-inset-bottom, 0) !important;
+  }
+  .fd-zen .fd-paper {
+    padding: 24px 20px 80px !important;
+  }
+
+  /* Recording bar: full width */
+  .recording-bar {
+    left: 8px !important; right: 8px !important;
+    max-width: none !important;
+  }
+}

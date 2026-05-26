@@ -13,6 +13,7 @@ import { ModalProvider } from './modals/ModalProvider';
 import { RecordingProvider } from './recording/RecordingProvider';
 import { RecordingBar } from './recording/RecordingBar';
 import { SelectionMenu } from './SelectionMenu';
+import { MobileTabs } from './MobileTabs';
 import { useTheme } from '@/app/_lib/theme';
 
 export function AppShell({ userName, children }: { userName: string; children: ReactNode }) {
@@ -34,6 +35,7 @@ export function AppShell({ userName, children }: { userName: string; children: R
                   </div>
                   <RecordingBar/>
                   <SelectionMenu/>
+                  <MobileTabs/>
                 </ModalProvider>
               </RecordingProvider>
             </LibraryProvider>

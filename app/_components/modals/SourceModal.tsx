@@ -85,7 +85,7 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 720 }}>
         <div className="modal-eyebrow">Search sources</div>
         <h2 className="modal-title">חיפוש מקורות</h2>
-        <div className="modal-title-en">Search Tanakh, Talmud, Midrash...</div>
+        <div className="modal-title-en">Keyword, question, or paste a passage</div>
 
         <form className="search-row" onSubmit={handleSearch} style={{ marginTop: 16 }}>
           <textarea

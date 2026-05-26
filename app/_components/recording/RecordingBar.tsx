@@ -50,6 +50,14 @@ export function RecordingBar() {
     <div className={`recording-bar${rec.paused ? ' paused' : ''}`} role="region" aria-label="Recording in progress">
       <EtherealVis size={32} level={rec.level} paused={rec.paused}/>
 
+      {!rec.paused && !ending && (
+        <div className="recording-bar-waves">
+          <span style={{ animationDelay: '0s' }} /><span style={{ animationDelay: '0.15s' }} />
+          <span style={{ animationDelay: '0.3s' }} /><span style={{ animationDelay: '0.45s' }} />
+          <span style={{ animationDelay: '0.1s' }} />
+        </div>
+      )}
+
       <div className="recording-bar-meta">
         <div className="recording-bar-time">{fmtTime(rec.time)}</div>
         <div className="recording-bar-status">
