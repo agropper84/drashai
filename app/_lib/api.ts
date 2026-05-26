@@ -74,11 +74,18 @@ export const api = {
       }),
   },
   sources: {
-    search: (q: string, category?: string, mode: 'auto' | 'keyword' | 'smart' = 'auto') => {
-      const params = new URLSearchParams({ q, size: '20', mode });
+    search: (q: string, category?: string, mode: 'auto' | 'keyword' | 'smart' = 'auto', depth: 'normal' | 'deep' = 'normal') => {
+      const params = new URLSearchParams({ q, size: depth === 'deep' ? '30' : '20', mode });
+      if (depth === 'deep') params.set('depth', 'deep');
       if (category && category !== 'all') params.set('category', category);
       return fetch(`/api/sources?${params}`).then(json<{ results?: LibraryResult[]; meta?: { mode: string; searches?: string[] }; error?: string }>);
     },
+    synthesize: (question: string, sources: { ref: string; he: string; en: string }[]) =>
+      fetch('/api/sources/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, sources }),
+      }),
   },
   transcribe: (audio: Blob, mode = 'encounter') => {
     const form = new FormData();

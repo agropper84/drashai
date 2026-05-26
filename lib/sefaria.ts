@@ -128,3 +128,27 @@ export async function fetchTopic(slug: string): Promise<SefariaResult[]> {
     return texts.filter((t): t is SefariaResult => t !== null);
   });
 }
+
+/** Fetch related/linked texts for a reference. Cached 6hr. */
+export async function fetchRelated(ref: string): Promise<SefariaResult[]> {
+  const key = cacheKey('rel', ref);
+  return cached(key, 21600, async () => {
+    const encoded = encodeURIComponent(ref);
+    const res = await fetch(`https://www.sefaria.org/api/related/${encoded}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+
+    // Extract linked refs from various link types
+    const refs: string[] = [];
+    for (const link of data.links || []) {
+      if (link.ref) refs.push(link.ref);
+      else if (link.sourceRef) refs.push(link.sourceRef);
+    }
+
+    // Fetch up to 5 related texts in parallel
+    const texts = await Promise.all(
+      refs.slice(0, 5).map((r) => fetchText(r).catch(() => null))
+    );
+    return texts.filter((t): t is SefariaResult => t !== null);
+  });
+}

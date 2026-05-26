@@ -1,6 +1,6 @@
 'use client';
-// Source search modal — supports keyword search AND AI-enhanced semantic search.
-// Paste text, ask a question, or search by keyword.
+// Source search modal — keyword, AI-enhanced, or deep search.
+// Includes AI synthesis to compile a comprehensive answer from sources.
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { I } from '../Icons';
@@ -15,39 +15,32 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<string>('all');
   const [searchMode, setSearchMode] = useState<string | null>(null);
   const [searchTerms, setSearchTerms] = useState<string[] | null>(null);
+  const [deep, setDeep] = useState(false);
   const { encounters, patch } = useEncounters();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const didAutoSearch = useRef(false);
 
-  const handleSearch = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    doSearch(query, tab);
-  };
+  // Synthesis state
+  const [synthesizing, setSynthesizing] = useState(false);
+  const [synthesis, setSynthesis] = useState('');
+  const [showSynthesis, setShowSynthesis] = useState(false);
+  const synthAbortRef = useRef<AbortController | null>(null);
 
-  // Pre-fill from selection (set by SelectionMenu → sessionStorage)
-  useEffect(() => {
-    if (didAutoSearch.current) return;
-    const stashed = sessionStorage.getItem('drashai.selection-query');
-    if (stashed?.trim()) {
-      sessionStorage.removeItem('drashai.selection-query');
-      setQuery(stashed.trim());
-      didAutoSearch.current = true;
-      // Auto-search after a tick so state is set
-      setTimeout(() => {
-        doSearch(stashed.trim());
-      }, 0);
-    }
-  }, []);
-
-  // Extracted search logic so it can be called from both form submit and auto-search
-  const doSearch = useCallback(async (q: string, cat?: string) => {
+  const doSearch = useCallback(async (q: string, cat?: string, isDeep?: boolean) => {
     if (!q.trim()) return;
     setSearching(true);
     setResults([]);
     setSearchMode(null);
     setSearchTerms(null);
+    setSynthesis('');
+    setShowSynthesis(false);
     try {
-      const data = await api.sources.search(q, cat === 'all' ? undefined : cat);
+      const data = await api.sources.search(
+        q,
+        cat === 'all' ? undefined : cat,
+        'auto',
+        isDeep ? 'deep' : 'normal',
+      );
       if (data.results) setResults(data.results);
       if (data.meta) {
         setSearchMode(data.meta.mode);
@@ -60,7 +53,23 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
-  // Auto-expand textarea on input and when pre-filled
+  const handleSearch = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    doSearch(query, tab, deep);
+  };
+
+  // Pre-fill from selection
+  useEffect(() => {
+    if (didAutoSearch.current) return;
+    const stashed = sessionStorage.getItem('drashai.selection-query');
+    if (stashed?.trim()) {
+      sessionStorage.removeItem('drashai.selection-query');
+      setQuery(stashed.trim());
+      didAutoSearch.current = true;
+      setTimeout(() => doSearch(stashed.trim()), 0);
+    }
+  }, [doSearch]);
+
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setQuery(e.target.value);
     const el = e.target;
@@ -68,7 +77,6 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
     el.style.height = Math.min(el.scrollHeight, 160) + 'px';
   };
 
-  // Resize textarea when query is set programmatically
   useEffect(() => {
     if (textareaRef.current && query) {
       const el = textareaRef.current;
@@ -77,8 +85,40 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
     }
   }, [query]);
 
-  const isSmartSearch = searchMode === 'smart';
-  const hasRelevance = results.some((r) => r.relevance);
+  const handleSynthesize = async () => {
+    if (!query.trim() || results.length === 0) return;
+    synthAbortRef.current?.abort();
+    const controller = new AbortController();
+    synthAbortRef.current = controller;
+    setSynthesizing(true);
+    setSynthesis('');
+    setShowSynthesis(true);
+    try {
+      const res = await api.sources.synthesize(
+        query,
+        results.map((r) => ({ ref: r.ref, he: r.he, en: r.en })),
+      );
+      if (!res.ok) throw new Error('Synthesis failed');
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error('No stream');
+      const decoder = new TextDecoder();
+      let full = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        full += decoder.decode(value, { stream: true });
+        setSynthesis(full);
+      }
+    } catch (e: unknown) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      setSynthesis('Synthesis failed. Try again.');
+    } finally {
+      setSynthesizing(false);
+    }
+  };
+
+  const isDeepMode = searchMode === 'deep';
+  const isSmartSearch = searchMode === 'smart' || isDeepMode;
 
   return (
     <div className="modal-shroud" onClick={onClose}>
@@ -100,9 +140,18 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
             rows={2}
             autoFocus
           />
-          <button type="submit" className="btn primary" disabled={searching} style={{ alignSelf: 'flex-end' }}>
-            <span className="icon">{I.search}</span>
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignSelf: 'flex-end' }}>
+            <button type="submit" className="btn primary" disabled={searching}>
+              <span className="icon">{I.search}</span>
+            </button>
+            <button
+              type="button"
+              className={`source-deep-toggle${deep ? ' active' : ''}`}
+              onClick={() => setDeep((v) => !v)}
+              title="Deep search — thorough multi-source dive">
+              Deep
+            </button>
+          </div>
         </form>
 
         <div style={{ display: 'flex', gap: 4, marginBottom: 16, overflowX: 'auto', alignItems: 'center' }}>
@@ -115,12 +164,10 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
               {cat.charAt(0).toUpperCase() + cat.slice(1)}
             </button>
           ))}
-          {isSmartSearch && (
-            <span className="source-smart-badge">AI-enhanced</span>
-          )}
+          {isDeepMode && <span className="source-smart-badge">Deep search</span>}
+          {isSmartSearch && !isDeepMode && <span className="source-smart-badge">AI-enhanced</span>}
         </div>
 
-        {/* Show decomposed search terms for transparency */}
         {searchTerms && searchTerms.length > 0 && (
           <div className="source-search-terms">
             {searchTerms.map((t, i) => (
@@ -129,10 +176,50 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        <div style={{ maxHeight: 420, overflow: 'auto' }}>
+        {/* Synthesis panel */}
+        {showSynthesis && (
+          <div className="source-synthesis">
+            <div className="source-synthesis-head">
+              <span className="source-synthesis-label">AI Synthesis</span>
+              {!synthesizing && synthesis && (
+                <button
+                  className="btn ghost small"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(synthesis);
+                  }}>
+                  Copy
+                </button>
+              )}
+              <button className="btn ghost small" onClick={() => { setShowSynthesis(false); synthAbortRef.current?.abort(); }}>
+                ×
+              </button>
+            </div>
+            <div className="source-synthesis-body">
+              {synthesis ? synthesis.split('\n').map((line, i) => (
+                <p key={i}>{line}</p>
+              )) : (
+                <span className="source-synthesis-loading">Synthesizing from {results.length} sources…</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Results header with synthesize button */}
+        {results.length > 0 && !searching && (
+          <div className="source-results-head">
+            <span className="source-results-count">{results.length} sources found</span>
+            {!showSynthesis && (
+              <button className="source-synthesize-btn" onClick={handleSynthesize} disabled={synthesizing}>
+                Synthesize answer
+              </button>
+            )}
+          </div>
+        )}
+
+        <div style={{ maxHeight: showSynthesis ? 280 : 420, overflow: 'auto' }}>
           {searching && (
             <div className="mono" style={{ textAlign: 'center', padding: 20, color: 'var(--ink-3)' }}>
-              {query.split(/\s+/).length > 3 ? 'Searching with AI…' : 'Searching...'}
+              {deep ? 'Deep searching…' : query.split(/\s+/).length > 3 ? 'Searching with AI…' : 'Searching...'}
             </div>
           )}
           {!searching && results.length === 0 && query && (

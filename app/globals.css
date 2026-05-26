@@ -1015,6 +1015,81 @@ input, textarea { font-family: inherit; color: inherit; }
   border-top: 1px dashed var(--rule-soft);
 }
 
+/* deep search toggle */
+.source-deep-toggle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px; border-radius: 4px;
+  border: 1px solid var(--rule-soft);
+  background: transparent; color: var(--ink-3);
+  cursor: pointer; transition: all 160ms;
+}
+.source-deep-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.source-deep-toggle.active {
+  background: var(--accent); color: var(--bg-card-hi);
+  border-color: var(--accent);
+}
+
+/* results header with count + synthesize */
+.source-results-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.source-results-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink-3);
+  letter-spacing: 0.06em;
+}
+.source-synthesize-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 14px; border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--accent-soft); color: var(--accent);
+  cursor: pointer; transition: all 160ms;
+  font-weight: 600;
+}
+.source-synthesize-btn:hover {
+  background: var(--accent); color: var(--bg-card-hi);
+}
+.source-synthesize-btn:disabled { opacity: 0.5; cursor: wait; }
+
+/* synthesis panel */
+.source-synthesis {
+  margin-bottom: 14px;
+  border: 1px solid var(--accent);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.source-synthesis-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--accent-soft);
+}
+.source-synthesis-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--accent);
+  font-weight: 600;
+}
+.source-synthesis-body {
+  padding: 14px 16px;
+  max-height: 300px; overflow-y: auto;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px; line-height: 1.7;
+  color: var(--ink);
+}
+.source-synthesis-body p { margin: 0 0 0.6em; }
+.source-synthesis-body p:last-child { margin-bottom: 0; }
+.source-synthesis-loading {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink-3);
+  letter-spacing: 0.08em;
+}
+
 .search-result {
   padding: 16px 20px;
   background: var(--bg-card);
