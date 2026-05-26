@@ -1,0 +1,146 @@
+/* Plan 7 — append to app/globals.css */
+
+/* ==== voice slider ==== */
+.voice-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 6px 14px;
+}
+.voice-slider-label {
+  text-align: center;
+  margin-bottom: 4px;
+}
+.voice-slider-label-en {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.voice-slider-label-detail {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.4;
+  margin-top: 3px;
+  min-height: 36px; /* prevents jump when text wraps differently */
+}
+
+.voice-slider-track-wrap {
+  position: relative;
+  margin: 0 8px;
+}
+.voice-slider-track {
+  position: relative;
+  height: 4px;
+  background: var(--bg-sunken);
+  border-radius: 2px;
+  margin: 12px 0 24px;
+}
+.voice-slider-track-fill {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 220ms cubic-bezier(.2, .7, .2, 1);
+}
+.voice-slider-stop {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--bg-card-hi);
+  border: 1.5px solid var(--rule);
+  cursor: pointer;
+  padding: 0;
+  transition: all 180ms cubic-bezier(.2, .7, .2, 1);
+}
+.voice-slider-stop:hover { transform: scale(1.2); border-color: var(--ink-2); }
+.voice-slider-stop.past { background: var(--accent); border-color: var(--accent); }
+.voice-slider-stop.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  width: 16px; height: 16px;
+  margin-left: -8px; margin-top: -8px;
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.voice-slider-stops-row {
+  position: absolute;
+  left: 0; right: 0;
+  top: 22px;
+  height: 18px;
+}
+.voice-slider-stop-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  background: transparent;
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  cursor: pointer;
+  padding: 2px 4px;
+  white-space: nowrap;
+  transition: color 150ms;
+}
+.voice-slider-stop-label:hover { color: var(--ink-2); }
+.voice-slider-stop-label.active { color: var(--accent); font-weight: 600; }
+
+.voice-slider-range-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ==== more options disclosure ==== */
+.more-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.more-options-toggle {
+  background: transparent;
+  border: none;
+  padding: 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color 100ms;
+}
+.more-options-toggle:hover { color: var(--ink); }
+.more-options-chev {
+  font-size: 11px;
+  color: var(--ink-3);
+  transition: transform 180ms ease;
+}
+.more-options-chev.open { transform: rotate(90deg); color: var(--accent); }
+.more-options-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 12px;
+}
+.more-options-section { display: flex; flex-direction: column; gap: 6px; }
+.more-options-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+}
