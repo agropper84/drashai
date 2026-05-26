@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
 import { getRedis } from '@/lib/kv';
-import { getDriveContext, writeEncryptedJson } from '@/lib/drive-storage';
+import { getDriveContext, writeEncryptedJson, readEncryptedJson } from '@/lib/drive-storage';
 
 const indexKey = (uid: string) => `sparks:${uid}`;
 const sparkKey = (uid: string, id: string) => `sparks:${uid}:${id}`;
@@ -11,24 +11,41 @@ export async function GET(req: NextRequest) {
     const session = await getSessionFromCookies();
     if (!session.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const redis = getRedis();
     const fileId = req.nextUrl.searchParams.get('fileId');
-    const idsRaw = await redis.get(indexKey(session.userId));
-    const ids: string[] = idsRaw ? JSON.parse(idsRaw) : [];
 
-    if (ids.length === 0) return NextResponse.json({ sparks: [] });
-
-    const pipeline = redis.pipeline();
-    for (const id of ids) pipeline.get(sparkKey(session.userId, id));
-    const results = await pipeline.exec();
-
+    // Try Drive first
     let sparks: any[] = [];
-    for (const [err, val] of results || []) {
-      if (!err && val) try { sparks.push(JSON.parse(val as string)); } catch {}
+    try {
+      const ctx = await getDriveContext();
+      const index = await readEncryptedJson<{ sparks: any[] }>(ctx, 'sparks', 'spark', '_index');
+      if (index?.sparks?.length) sparks = index.sparks;
+    } catch (e: any) {
+      console.warn('[Sparks] Drive read failed, falling back to Redis:', e.message);
     }
 
-    if (fileId === 'unassigned') sparks = sparks.filter(s => !s.fileId);
-    else if (fileId) sparks = sparks.filter(s => s.fileId === fileId);
+    // Fall back to Redis if Drive empty
+    if (sparks.length === 0) {
+      const redis = getRedis();
+      const idsRaw = await redis.get(indexKey(session.userId));
+      const ids: string[] = idsRaw ? JSON.parse(idsRaw) : [];
+      if (ids.length > 0) {
+        const pipeline = redis.pipeline();
+        for (const id of ids) pipeline.get(sparkKey(session.userId, id));
+        const results = await pipeline.exec();
+        for (const [err, val] of results || []) {
+          if (!err && val) try { sparks.push(JSON.parse(val as string)); } catch {}
+        }
+        // Backfill to Drive
+        if (sparks.length > 0) {
+          getDriveContext().then(ctx =>
+            writeEncryptedJson(ctx, 'sparks', 'spark', '_index', { sparks })
+          ).catch(() => {});
+        }
+      }
+    }
+
+    if (fileId === 'unassigned') sparks = sparks.filter((s: any) => !s.fileId);
+    else if (fileId) sparks = sparks.filter((s: any) => s.fileId === fileId);
 
     return NextResponse.json({ sparks });
   } catch (e: any) {

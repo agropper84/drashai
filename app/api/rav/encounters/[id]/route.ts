@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
 import { getRedis } from '@/lib/kv';
-import { getDriveContext, writeEncryptedJson } from '@/lib/drive-storage';
+import { getDriveContext, writeEncryptedJson, readEncryptedJson, deleteEncryptedFile } from '@/lib/drive-storage';
 import type { RavEncounter } from '../route';
 
 const itemKey = (userId: string, id: string) => `rav:${userId}:encounter:${id}`;
@@ -15,6 +15,14 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
     const session = await getSessionFromCookies();
     if (!session.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
+    // Try Drive first
+    try {
+      const ctx = await getDriveContext();
+      const enc = await readEncryptedJson<RavEncounter>(ctx, 'encounters', 'encounter', id);
+      if (enc) return NextResponse.json({ encounter: enc });
+    } catch {}
+
+    // Fall back to Redis
     const data = await getRedis().get(itemKey(session.userId, id));
     if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
