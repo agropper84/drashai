@@ -80,6 +80,8 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     // Plan 3: archive/unarchive
     if (updates.archive === true) encounter.archivedAt = new Date().toISOString();
     if (updates.unarchive === true) { delete encounter.archivedAt; }
+    // Plan 5: sealed flag (used by markDelivered)
+    if (updates.sealed !== undefined) encounter.sealed = updates.sealed;
     encounter.updatedAt = new Date().toISOString();
 
     await redis.set(itemKey(session.userId, id), JSON.stringify(encounter));

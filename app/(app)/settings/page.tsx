@@ -317,9 +317,20 @@ function WorkflowsSection() {
                 <div key={i} className="workflow-phase">
                   <span className="workflow-phase-num">{i + 1}</span>
                   {isEditing ? (
-                    <input value={p} onChange={(e) => update(w.id, (prev) => ({
-                      ...prev, phases: prev.phases.map((x, j) => (j === i ? e.target.value : x)),
-                    }))} style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 12, color: 'var(--ink-1)', minWidth: 80, padding: 0 }} />
+                    <input defaultValue={p}
+                      onBlur={(e) => {
+                        const newName = e.target.value.trim();
+                        if (newName && newName !== p) {
+                          update(w.id, (prev) => {
+                            const newPhases = prev.phases.map((x, j) => (j === i ? newName : x));
+                            const newMap: Record<string, string> = {};
+                            prev.phases.forEach((oldN, j) => { const m = prev.phaseTabMap?.[oldN]; if (m) newMap[newPhases[j]] = m; });
+                            return { ...prev, phases: newPhases, phaseTabMap: newMap };
+                          });
+                        }
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                      style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 12, color: 'var(--ink-1)', minWidth: 80, padding: 0 }} />
                   ) : p}
                   {isEditing && w.phases.length > 2 && (
                     <button className="remove" onClick={() => update(w.id, (prev) => ({
