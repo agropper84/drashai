@@ -27,7 +27,7 @@ export const I = {
   check:    svg(<polyline points="20 6 9 17 4 12"/>),
   trash:    svg(<><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6m4-6v6"/></>),
   logout:   svg(<><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>),
-  spark:    svg(<path d="M12 2L9 12l-7 1 5.5 5L6 22l6-4 6 4-1.5-4L22 13l-7-1z"/>),
+  spark:    svg(<><polygon points="12 3 4.5 16.5 19.5 16.5"/><polygon points="12 21 19.5 7.5 4.5 7.5"/></>),
   book:     svg(<><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></>),
   templ:    svg(<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></>),
   doc:      svg(<><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></>),
