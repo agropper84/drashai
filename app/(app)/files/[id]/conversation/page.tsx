@@ -1,11 +1,12 @@
 'use client';
-// Plan 5 — B4 fix: also resync when file.updatedAt changes, so external refreshes
-// don't get blown away by stale local state.
+// Plan 10 — Conversation tab gains translate toggle + data-selectable for
+// the selection menu.
 
 import { useEffect, useRef, useState } from 'react';
 import { I } from '@/app/_components/Icons';
 import { useActiveFile } from '@/app/_lib/use-active-file';
 import { useModal } from '@/app/_components/modals/ModalProvider';
+import { TranslatePanel } from '@/app/_components/translate/TranslatePanel';
 
 export default function ConversationTab() {
   const { id, file, patch } = useActiveFile();
@@ -13,6 +14,7 @@ export default function ConversationTab() {
   const [transcriptDraft, setTranscriptDraft] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showTranslate, setShowTranslate] = useState(false);
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // B4 — re-sync when file.updatedAt changes (e.g. recording modal saved).
@@ -44,13 +46,22 @@ export default function ConversationTab() {
           <h2 className="section-title">שיחה</h2>
           <div className="section-title-en">Conversation</div>
         </div>
-        <button className="btn small" onClick={() => open('record', { fileId: file.id })}>
-          <span className="icon">{I.mic}</span> Record
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className={`btn small${showTranslate ? ' primary' : ''}`} onClick={() => setShowTranslate((v) => !v)}>
+            Translate
+          </button>
+          <button className="btn small" onClick={() => open('record', { fileId: file.id })}>
+            <span className="icon">{I.mic}</span> Record
+          </button>
+        </div>
       </div>
 
+      {showTranslate && file.transcript && (
+        <TranslatePanel source={file.transcript} />
+      )}
+
       {file.transcript && file.transcript.includes(':') && (
-        <div className="transcript" style={{ marginBottom: 20 }}>
+        <div className="transcript" data-selectable="true" style={{ marginBottom: 20 }}>
           {file.transcript.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => {
             const colonIdx = line.indexOf(':');
             const hasSpeaker = colonIdx > 0 && colonIdx < 30;

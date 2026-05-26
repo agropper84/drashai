@@ -106,4 +106,19 @@ export const api = {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+
+  /** Plan 10 — translation. Returns the full translated text. */
+  translate: async (text: string, direction: 'he-en' | 'en-he' | 'auto' = 'auto', signal?: AbortSignal): Promise<string> => {
+    const res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, direction }),
+      signal,
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      throw new Error(`${res.status} ${t}`);
+    }
+    return res.text();
+  },
 };

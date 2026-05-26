@@ -6,6 +6,7 @@ import { I } from '@/app/_components/Icons';
 import { ViewToggle } from '@/app/_components/ViewToggle';
 import { ConfirmDialog } from '@/app/_components/ConfirmDialog';
 import { useTheme } from '@/app/_lib/theme';
+import { getZenDefault, setZenDefault } from '@/app/_lib/zen-mode';
 import { useWorkflows } from '@/app/_lib/workflows-store';
 import { useTemplates } from '@/app/_lib/templates-store';
 import { useEncounters } from '@/app/_lib/encounters-store';
@@ -478,6 +479,8 @@ function AccountSection({ userName }: { userName: string }) {
 
 // ── Appearance ──────────────────────────────────────────────
 function AppearanceSection({ theme, setTheme, mode, setMode }: { theme: string; setTheme: (v: any) => void; mode: string; setMode: (v: any) => void }) {
+  const [zenDef, setZenDef] = useState(() => getZenDefault());
+
   return (
     <div className="settings-section">
       <div className="settings-block">
@@ -505,6 +508,16 @@ function AppearanceSection({ theme, setTheme, mode, setMode }: { theme: string; 
                 {m.charAt(0).toUpperCase() + m.slice(1)}
               </button>
             ))}
+          </div>
+        </div>
+        <div className="settings-row" style={{ marginTop: 16 }}>
+          <div>
+            <div className="settings-label">Open drafts in Zen mode by default</div>
+            <div className="settings-help">Full-screen distraction-free writing. Toggle anytime with ⌘.</div>
+          </div>
+          <div className="mode-toggle">
+            <button className={zenDef ? 'active' : ''} onClick={() => { setZenDefault(true); setZenDef(true); }}>On</button>
+            <button className={!zenDef ? 'active' : ''} onClick={() => { setZenDefault(false); setZenDef(false); }}>Off</button>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client';
-// Plan 8 — Draft tab uses Composer (with ⌘K / /source insertion) and an
-// Attached Sources rail section. VoiceSlider + MoreOptions from Plan 7 are kept.
+// Plan 10 — Draft tab gains Zen mode (⌘.), translate toggle, and
+// data-selectable for selection menu.
 
 import { useEffect, useRef, useState } from 'react';
 import { I } from '@/app/_components/Icons';
@@ -15,6 +15,8 @@ import { MoreOptions } from '@/app/_components/draft/MoreOptions';
 import { Composer, ComposerHandle } from '@/app/_components/draft/Composer';
 import { AttachedSourcesPanel } from '@/app/_components/draft/AttachedSourcesPanel';
 import { toGenerateParams, VoiceStop, descriptorFor } from '@/app/_lib/voice-mode';
+import { useZenMode } from '@/app/_lib/zen-mode';
+import { TranslatePanel } from '@/app/_components/translate/TranslatePanel';
 
 export default function DraftTab() {
   const { file, patch } = useActiveFile();
@@ -32,6 +34,8 @@ export default function DraftTab() {
   const [generating, setGenerating] = useState(false);
   const [streamedContent, setStreamedContent] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showTranslate, setShowTranslate] = useState(false);
+  const { zen, toggle: toggleZen } = useZenMode();
 
   useEffect(() => {
     const stored = localStorage.getItem('drashai.voiceStop');
@@ -107,7 +111,7 @@ export default function DraftTab() {
   };
 
   return (
-    <div className="composer">
+    <div className={`composer${zen ? ' zen' : ''}`}>
       <div>
         <div className="toolbar">
           <button className="icon-btn" title="Bold"><span style={{ fontWeight: 700, fontFamily: 'serif', fontSize: 14 }}>B</span></button>
@@ -118,11 +122,15 @@ export default function DraftTab() {
           <button
             className="icon-btn"
             title="Insert source (⌘K)"
-            onClick={() => {
-              // Trigger ⌘K programmatically by inserting then deleting? Simpler: open the modal as fallback.
-              open('sources');
-            }}>
+            onClick={() => open('sources')}>
             <span className="icon" style={{ width: 16, height: 16 }}>{I.book}</span>
+          </button>
+          <div className="divider-v" />
+          <button className={`icon-btn${showTranslate ? ' active' : ''}`} title="Translate" onClick={() => setShowTranslate((v) => !v)}>
+            <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>A⇄</span>
+          </button>
+          <button className={`icon-btn${zen ? ' active' : ''}`} title="Zen mode (⌘.)" onClick={toggleZen}>
+            <span style={{ fontSize: 14 }}>◎</span>
           </button>
           <div style={{ flex: 1 }} />
           <button
@@ -143,8 +151,12 @@ export default function DraftTab() {
           placeholder="Begin writing your thoughts here... (⌘K to insert a source)"
         />
 
+        {showTranslate && (userDraft || streamedContent || file.generatedContent?.length) && (
+          <TranslatePanel source={userDraft || streamedContent || file.generatedContent?.[file.generatedContent.length - 1]?.content || ''} />
+        )}
+
         {streamedContent && (
-          <div className="composer-paper grain" style={{ position: 'relative' }}>
+          <div className="composer-paper grain" data-selectable="true" style={{ position: 'relative' }}>
             <div className="mono" style={{ color: 'var(--gold)', marginBottom: 12, textAlign: 'center' }}>AI Generated</div>
             <div className="composer-body" style={{ minHeight: 0 }}>
               {streamedContent.split('\n\n').map((para, i) => (
@@ -157,7 +169,7 @@ export default function DraftTab() {
         {!streamedContent && file.generatedContent?.length ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {file.generatedContent.map((g, i) => (
-              <div key={i} className="composer-paper grain" style={{ position: 'relative' }}>
+              <div key={i} className="composer-paper grain" data-selectable="true" style={{ position: 'relative' }}>
                 <div className="mono" style={{ color: 'var(--gold)', marginBottom: 16, textAlign: 'center' }}>
                   {g.type.replace('_', ' ')} — {new Date(g.generatedAt).toLocaleDateString()}
                 </div>

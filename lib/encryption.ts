@@ -41,3 +41,29 @@ export function decrypt(value: string): string {
   decipher.setAuthTag(authTag);
   return decipher.update(encrypted) + decipher.final('utf8');
 }
+
+/** Generate a random AES-256 key (32 bytes, base64 encoded) */
+export function generateEncryptionKey(): string {
+  return crypto.randomBytes(32).toString('base64');
+}
+
+/** Encrypt a binary buffer with a user-specific key (AES-256-GCM) */
+export function encryptBuffer(buffer: Buffer, keyBase64: string): Buffer {
+  const key = Buffer.from(keyBase64, 'base64');
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+  const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return Buffer.concat([iv, encrypted, authTag]);
+}
+
+/** Decrypt a binary buffer with a user-specific key */
+export function decryptBuffer(combined: Buffer, keyBase64: string): Buffer {
+  const key = Buffer.from(keyBase64, 'base64');
+  const iv = combined.subarray(0, IV_LENGTH);
+  const authTag = combined.subarray(combined.length - AUTH_TAG_LENGTH);
+  const encrypted = combined.subarray(IV_LENGTH, combined.length - AUTH_TAG_LENGTH);
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+  decipher.setAuthTag(authTag);
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]);
+}

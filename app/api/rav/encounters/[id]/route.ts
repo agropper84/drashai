@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
 import { getRedis } from '@/lib/kv';
+import { getDriveContext, writeEncryptedJson } from '@/lib/drive-storage';
 import type { RavEncounter } from '../route';
 
 const itemKey = (userId: string, id: string) => `rav:${userId}:encounter:${id}`;
@@ -90,6 +91,12 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     encounter.updatedAt = new Date().toISOString();
 
     await redis.set(itemKey(session.userId, id), JSON.stringify(encounter));
+
+    // Dual-write to Google Drive (fire-and-forget)
+    getDriveContext().then(ctx =>
+      writeEncryptedJson(ctx, 'encounters', 'encounter', id, encounter)
+    ).catch(e => console.warn('[Drive] Encounter update failed:', e.message));
+
     return NextResponse.json({ encounter });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });

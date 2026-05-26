@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
 import { getRedis } from '@/lib/kv';
+import { getDriveContext, writeEncryptedJson } from '@/lib/drive-storage';
 
 const indexKey = (uid: string) => `sparks:${uid}`;
 const sparkKey = (uid: string, id: string) => `sparks:${uid}:${id}`;
@@ -62,6 +63,11 @@ export async function POST(req: NextRequest) {
     const ids: string[] = idsRaw ? JSON.parse(idsRaw) : [];
     ids.unshift(id);
     await redis.set(indexKey(session.userId), JSON.stringify(ids));
+
+    // Dual-write to Google Drive (fire-and-forget)
+    getDriveContext().then(ctx =>
+      writeEncryptedJson(ctx, 'sparks', 'spark', id, spark)
+    ).catch(e => console.warn('[Drive] Spark write failed:', e.message));
 
     return NextResponse.json({ spark });
   } catch (e: any) {

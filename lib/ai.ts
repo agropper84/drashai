@@ -17,3 +17,18 @@ export async function getClient(): Promise<Anthropic> {
   if (!envKey) throw new Error('No Anthropic API key configured');
   return new Anthropic({ apiKey: envKey });
 }
+
+/** Simple non-streaming helper. Returns the text content of a single message. */
+export async function askClaude(
+  prompt: string,
+  opts?: { maxTokens?: number; model?: string },
+): Promise<string> {
+  const client = await getClient();
+  const msg = await client.messages.create({
+    model: opts?.model || MODELS.SONNET,
+    max_tokens: opts?.maxTokens || 4096,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  const block = msg.content[0];
+  return block.type === 'text' ? block.text : '';
+}

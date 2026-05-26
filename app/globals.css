@@ -2716,3 +2716,247 @@ button.spine-dot:hover { transform: scale(1.25); }
 @media (prefers-reduced-motion: reduce) {
   .sidebar-recording-dot::before { animation: none; transform: scale(1); opacity: 0.15; }
 }
+
+/* ==== Plan 10 — zen mode transition ==== */
+.composer.zen {
+  position: fixed; inset: 0; z-index: 45;
+  background: var(--bg-page);
+  animation: zen-fade-in 240ms ease-out;
+}
+@keyframes zen-fade-in {
+  from { opacity: 0.4; }
+  to   { opacity: 1; }
+}
+
+/* ==== voice training ==== */
+.voice-training {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 18px 20px;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--rule-soft);
+  border-radius: 8px;
+  position: relative;
+  border-left: 3px solid var(--accent);
+}
+.voice-training-head {
+  display: flex; justify-content: space-between; gap: 20px;
+  align-items: flex-start;
+}
+.voice-training-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.16em;
+  color: var(--accent); text-transform: uppercase;
+  margin-bottom: 4px; font-weight: 600;
+}
+.voice-training-title {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 20px; font-weight: 700;
+  color: var(--ink); line-height: 1.2;
+}
+.voice-training-subtitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic; font-size: 14px;
+  color: var(--ink-2); margin-top: 4px;
+}
+.voice-training-strength {
+  flex-shrink: 0; min-width: 160px; text-align: right;
+}
+.voice-training-level {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; padding: 3px 8px;
+  border-radius: 3px; display: inline-block;
+  margin-bottom: 6px;
+}
+.voice-training-level.level-none { background: var(--bg-sunken); color: var(--ink-3); }
+.voice-training-level.level-starter { background: var(--bg-sunken); color: var(--ink-2); }
+.voice-training-level.level-developing { background: var(--gold-soft); color: var(--ink-1); }
+.voice-training-level.level-established { background: var(--accent-soft); color: var(--accent); }
+.voice-training-level.level-rich { background: var(--sage-soft); color: var(--sage); }
+.voice-training-meter {
+  height: 4px; background: var(--bg-sunken);
+  border-radius: 2px; overflow: hidden;
+  width: 100%;
+}
+.voice-training-meter-fill {
+  height: 100%; background: var(--accent);
+  transition: width 400ms cubic-bezier(.2, .7, .2, 1);
+}
+.voice-training-meter-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--ink-3);
+  margin-top: 4px; letter-spacing: 0.06em;
+}
+.voice-training-hint {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic; font-size: 14px;
+  color: var(--ink-2); line-height: 1.5;
+}
+.voice-training-list {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.voice-training-doc {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; background: var(--bg-card);
+  border: 1px solid var(--rule-soft); border-radius: 4px;
+}
+.voice-training-doc-icon {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  background: var(--bg-sunken); border-radius: 4px;
+  color: var(--ink-3);
+}
+.voice-training-doc-name {
+  font-weight: 500; font-size: 14px; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.voice-training-doc-excerpt {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic; font-size: 12px;
+  color: var(--ink-3); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.voice-training-actions {
+  display: flex; gap: 8px;
+}
+.voice-training-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 2px 7px;
+  border-radius: 3px; display: inline-block;
+}
+.voice-training-pill.level-none { background: var(--bg-sunken); color: var(--ink-4); }
+.voice-training-pill.level-starter { background: var(--bg-sunken); color: var(--ink-3); }
+.voice-training-pill.level-developing { background: var(--gold-soft); color: var(--ink-1); }
+.voice-training-pill.level-established { background: var(--accent-soft); color: var(--accent); }
+.voice-training-pill.level-rich { background: var(--sage-soft); color: var(--sage); }
+
+/* ==== translate panel ==== */
+.translate-panel {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--rule-soft);
+  border-radius: 6px; overflow: hidden;
+  background: var(--bg-card);
+  margin: 12px 0;
+}
+.translate-panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-bottom: 1px solid var(--rule-soft);
+  background: var(--bg);
+}
+.translate-panel-direction {
+  display: flex; gap: 2px; background: var(--bg-sunken);
+  padding: 2px; border-radius: 999px;
+}
+.translate-panel-direction button {
+  background: transparent; border: none;
+  padding: 4px 12px; border-radius: 999px;
+  font-size: 11px; color: var(--ink-3);
+  cursor: pointer; font-family: inherit;
+}
+.translate-panel-direction button.active {
+  background: var(--bg-card-hi); color: var(--ink);
+  box-shadow: var(--shadow-card); font-weight: 500;
+}
+.translate-panel-loading {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.1em;
+  color: var(--accent); text-transform: uppercase;
+}
+.translate-panel-body {
+  display: grid; grid-template-columns: 1fr 1px 1fr;
+}
+.translate-panel-body.scrollable .translate-panel-col {
+  max-height: 480px; overflow-y: auto;
+}
+.translate-panel-body::after {
+  content: ''; grid-column: 2; background: var(--rule-soft);
+}
+.translate-panel-col {
+  padding: 16px 18px;
+}
+.translate-panel-col.rtl { direction: rtl; text-align: right; }
+.translate-panel-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.14em;
+  color: var(--ink-3); text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.translate-panel-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px; line-height: 1.6;
+  color: var(--ink);
+}
+.translate-panel-text.heb-display {
+  font-family: 'Frank Ruhl Libre', serif; font-size: 18px;
+}
+.translate-panel-text p { margin: 0 0 0.8em; }
+.translate-panel-text p:last-child { margin-bottom: 0; }
+
+@media (max-width: 720px) {
+  .translate-panel-body { grid-template-columns: 1fr; }
+  .translate-panel-body::after {
+    grid-column: 1; height: 1px; width: 100%;
+  }
+}
+
+/* ==== selection menu ==== */
+.selection-menu {
+  position: absolute; z-index: 80;
+  display: flex; align-items: center; gap: 4px;
+  background: var(--ink-1); color: var(--bg-card-hi);
+  border-radius: 999px; padding: 4px 6px;
+  box-shadow: var(--shadow-lift);
+  font-family: inherit;
+  animation: selection-menu-in 160ms cubic-bezier(.2, .7, .2, 1);
+}
+@keyframes selection-menu-in {
+  from { opacity: 0; transform: translate(-50%, calc(-100% + 8px)); }
+  to   { opacity: 1; transform: translate(-50%, -100%); }
+}
+.selection-menu button {
+  background: transparent; border: none;
+  color: inherit; padding: 6px 10px;
+  border-radius: 999px; cursor: pointer;
+  display: flex; align-items: center; gap: 5px;
+  font-size: 12px; font-family: inherit;
+  transition: background 100ms;
+}
+.selection-menu button:hover { background: rgba(255, 255, 255, 0.1); }
+.selection-menu-div {
+  width: 1px; height: 14px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.selection-menu::after {
+  content: '';
+  position: absolute;
+  top: 100%; left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--ink-1);
+}
+
+.selection-translation {
+  position: absolute; z-index: 79;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 10px 14px;
+  max-width: 360px;
+  box-shadow: var(--shadow-lift);
+  animation: selection-translation-in 200ms ease-out;
+}
+@keyframes selection-translation-in {
+  from { opacity: 0; transform: translate(-50%, -6px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+.selection-translation-loading {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--ink-3);
+  letter-spacing: 0.06em;
+}
+.selection-translation-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px; color: var(--ink);
+  line-height: 1.5;
+}

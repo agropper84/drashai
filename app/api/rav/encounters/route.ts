@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
 import { getRedis } from '@/lib/kv';
+import { getDriveContext, writeEncryptedJson } from '@/lib/drive-storage';
 
 export interface RavEncounter {
   id: string;
@@ -77,13 +78,17 @@ export async function POST(req: NextRequest) {
     };
 
     const redis = getRedis();
-    // Save encounter
+    // Save encounter to Redis
     await redis.set(itemKey(session.userId, encounter.id), JSON.stringify(encounter));
-    // Add to list
     const listData = await redis.get(listKey(session.userId));
     const ids: string[] = listData ? JSON.parse(listData) : [];
     ids.unshift(encounter.id);
     await redis.set(listKey(session.userId), JSON.stringify(ids));
+
+    // Dual-write to Google Drive (fire-and-forget — don't block response)
+    getDriveContext().then(ctx =>
+      writeEncryptedJson(ctx, 'encounters', 'encounter', encounter.id, encounter)
+    ).catch(e => console.warn('[Drive] Encounter write failed:', e.message));
 
     return NextResponse.json({ encounter });
   } catch (e: any) {

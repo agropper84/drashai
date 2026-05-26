@@ -1,9 +1,14 @@
 'use client';
+// Plan 10 — Final tab gains translate toggle + data-selectable.
+
+import { useState } from 'react';
 import { I } from '@/app/_components/Icons';
 import { useActiveFile } from '@/app/_lib/use-active-file';
+import { TranslatePanel } from '@/app/_components/translate/TranslatePanel';
 
 export default function FinalTab() {
   const { file } = useActiveFile();
+  const [showTranslate, setShowTranslate] = useState(false);
   if (!file) return null;
 
   const finalContent = file.generatedContent?.[file.generatedContent.length - 1];
@@ -21,6 +26,9 @@ export default function FinalTab() {
         </div>
         {finalContent && (
           <div style={{ display: 'flex', gap: 6 }}>
+            <button className={`btn small${showTranslate ? ' primary' : ''}`} onClick={() => setShowTranslate((v) => !v)}>
+              Translate
+            </button>
             <button className="btn small" onClick={() => handleCopy(finalContent.content)}>
               <span className="icon">{I.copy}</span> Copy
             </button>
@@ -31,6 +39,10 @@ export default function FinalTab() {
         )}
       </div>
 
+      {showTranslate && finalContent && (
+        <TranslatePanel source={finalContent.content} />
+      )}
+
       {!finalContent ? (
         <div className="empty-state" style={{ padding: 40 }}>
           <p style={{ fontStyle: 'italic', color: 'var(--ink-3)' }}>
@@ -38,7 +50,7 @@ export default function FinalTab() {
           </p>
         </div>
       ) : (
-        <div className="composer-paper grain" style={{ padding: 56 }}>
+        <div className="composer-paper grain" data-selectable="true" style={{ padding: 56 }}>
           <div className="composer-body">
             {finalContent.content.split('\n\n').map((para, i) => (
               <p key={i} className={i === 0 ? 'first-cap' : ''} style={{ whiteSpace: 'pre-wrap' }}>{para}</p>

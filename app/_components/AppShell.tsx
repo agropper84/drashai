@@ -12,6 +12,7 @@ import { LibraryProvider } from '@/app/_lib/library-store';
 import { ModalProvider } from './modals/ModalProvider';
 import { RecordingProvider } from './recording/RecordingProvider';
 import { RecordingBar } from './recording/RecordingBar';
+import { SelectionMenu } from './SelectionMenu';
 import { useTheme } from '@/app/_lib/theme';
 
 export function AppShell({ userName, children }: { userName: string; children: ReactNode }) {
@@ -32,6 +33,7 @@ export function AppShell({ userName, children }: { userName: string; children: R
                     </main>
                   </div>
                   <RecordingBar/>
+                  <SelectionMenu/>
                 </ModalProvider>
               </RecordingProvider>
             </LibraryProvider>
