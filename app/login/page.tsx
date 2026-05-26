@@ -1,6 +1,7 @@
 'use client';
-// MODIFIED — replaced the Tailwind gradient hero with the design system's warm aesthetic
-// so the login screen matches the rest of the app.
+// Login screen with calligraphic quill logo.
+
+import { QuillLogo } from '@/app/_components/Brand';
 
 export default function LoginPage() {
   return (
@@ -12,7 +13,7 @@ export default function LoginPage() {
       background: 'var(--bg-page)',
     }}>
       <div className="card" style={{ width: '100%', maxWidth: 400, margin: '0 16px', padding: '40px 36px', textAlign: 'center' }}>
-        <div className="brand-mark" style={{ width: 56, height: 56, fontSize: 32, margin: '0 auto 16px', borderRadius: 10 }}>דא</div>
+        <div style={{ margin: '0 auto 16px', width: 56 }}><QuillLogo size={56} /></div>
         <h1 className="heb-display" style={{ fontSize: 36, margin: '0 0 4px', color: 'var(--ink)' }}>דרשאי</h1>
         <p style={{ fontSize: 15, color: 'var(--ink-2)', fontStyle: 'italic', margin: '0 0 28px', fontFamily: "'Cormorant Garamond', serif" }}>
           Encounter Recorder & Content Generator
