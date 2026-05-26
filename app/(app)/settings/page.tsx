@@ -10,7 +10,9 @@ import { useWorkflows } from '@/app/_lib/workflows-store';
 import { useTemplates } from '@/app/_lib/templates-store';
 import { useEncounters } from '@/app/_lib/encounters-store';
 import { api } from '@/app/_lib/api';
-import type { Encounter, Workflow } from '@/app/_lib/types';
+import type { Encounter, Workflow, FileTab } from '@/app/_lib/types';
+
+const TABS: FileTab[] = ['conversation', 'documents', 'sources', 'insights', 'draft', 'final'];
 
 type SettingsTab = 'keys' | 'transcription' | 'appearance' | 'workflows' | 'privacy' | 'account';
 
@@ -262,6 +264,7 @@ function WorkflowsSection() {
       id, name: 'New workflow', heb: 'מסלול חדש',
       templateId: templates[0]?.id || '',
       phases: ['Meet', 'Capture', 'Draft', 'Deliver'],
+      phaseTabMap: { Meet: 'conversation', Capture: 'sources', Draft: 'draft', Deliver: 'final' },
       defaultView: 'detailed', showSpine: true, autoSeal: false,
     };
     setWorkflows((prev) => [...prev, next]);
@@ -332,6 +335,24 @@ function WorkflowsSection() {
                 </button>
               )}
             </div>
+            {isEditing && (
+              <div style={{ marginTop: 12 }}>
+                <div className="settings-label" style={{ fontSize: 13, marginBottom: 6 }}>Phase → tab mapping</div>
+                <div className="settings-help" style={{ marginBottom: 8 }}>When the rabbi clicks a phase on the spine, jump to this tab.</div>
+                <div className="phase-tab-map">
+                  {w.phases.map((p) => (
+                    <div key={p} className="phase-tab-map-row">
+                      <span className="phase-label">{p}</span>
+                      <select className="phase-tab-select" value={w.phaseTabMap?.[p] || 'conversation'}
+                        onChange={(e) => update(w.id, (prev) => ({ ...prev, phaseTabMap: { ...prev.phaseTabMap, [p]: e.target.value as FileTab } }))}>
+                        {TABS.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="workflow-options">
               <label>
                 <input type="checkbox" checked={w.showSpine}

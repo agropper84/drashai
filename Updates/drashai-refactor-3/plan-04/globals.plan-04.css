@@ -1,0 +1,59 @@
+/* Plan 4 — append to app/globals.css */
+
+/* ==== file detail spine ==== */
+.file-detail-spine {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 18px 22px;
+  margin: 8px 0 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule-soft);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+}
+.file-detail-spine-main { min-width: 0; }
+.file-detail-spine-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+@media (max-width: 720px) {
+  .file-detail-spine {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .file-detail-spine-side {
+    justify-content: flex-end;
+  }
+}
+
+/* ==== workflow editor — phase→tab mapping ==== */
+.phase-tab-map {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  align-items: center;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+}
+.phase-tab-map-row {
+  display: contents;
+}
+.phase-tab-map-row .phase-label {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px;
+  color: var(--ink-1);
+}
+.phase-tab-map-row .phase-tab-select {
+  padding: 4px 8px;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--rule-soft);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--ink-1);
+}
