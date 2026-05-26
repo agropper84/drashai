@@ -4,6 +4,9 @@
 // with inline citations, organized by source layer (Torah → Talmud → later).
 
 import { useRef, useState } from 'react';
+import { useEncounters } from '@/app/_lib/encounters-store';
+import { useSparks } from '@/app/_lib/sparks-store';
+import { api } from '@/app/_lib/api';
 import type { LibraryResult } from '@/app/_lib/types';
 
 type Phase = 'idle' | 'searching' | 'synthesizing' | 'done';
@@ -17,7 +20,10 @@ export function ScholarPanel() {
   const [showSources, setShowSources] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [savedAnswer, setSavedAnswer] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const { encounters, patch, refresh } = useEncounters();
+  const { create: createSpark } = useSparks();
 
   const handleAsk = async () => {
     if (!question.trim() || phase === 'searching' || phase === 'synthesizing') return;
@@ -174,6 +180,34 @@ export function ScholarPanel() {
                 <button className="btn ghost small" onClick={handleCopy}>
                   {copied ? 'Copied' : 'Copy'}
                 </button>
+                <button
+                  className="btn ghost small"
+                  onClick={async () => {
+                    await createSpark({ body: `Q: ${question}\n\n${answer}`, tag: 'Scholar' });
+                    setSavedAnswer(true);
+                    setTimeout(() => setSavedAnswer(false), 2000);
+                  }}>
+                  {savedAnswer ? 'Saved' : 'To Sparks'}
+                </button>
+                {encounters.length > 0 && (
+                  <select
+                    className="input"
+                    style={{ width: 'auto', padding: '4px 8px', fontSize: 11 }}
+                    defaultValue=""
+                    onChange={async (e) => {
+                      if (!e.target.value) return;
+                      await patch(e.target.value, {
+                        appendTranscript: `\n\n--- Scholar: ${question} ---\n${answer}`,
+                      });
+                      refresh();
+                      e.target.value = '';
+                    }}>
+                    <option value="" disabled>Save to file...</option>
+                    {encounters.map((enc) => (
+                      <option key={enc.id} value={enc.id}>{enc.congregantName}</option>
+                    ))}
+                  </select>
+                )}
                 {sources.length > 0 && (
                   <button className="btn ghost small" onClick={() => setShowSources((v) => !v)}>
                     {showSources ? 'Hide' : 'Show'} {sources.length} sources
@@ -191,7 +225,38 @@ export function ScholarPanel() {
             <div className="scholar-sources">
               {sources.map((s, i) => (
                 <div key={i} className="scholar-source">
-                  <div className="scholar-source-ref">{s.ref}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <div className="scholar-source-ref">{s.ref}</div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button
+                        className="btn ghost small"
+                        style={{ fontSize: 10, padding: '2px 6px', minHeight: 0 }}
+                        onClick={async () => {
+                          await createSpark({ body: `${s.ref}\n${s.en || s.he}`, tag: 'Source' });
+                        }}>
+                        Spark
+                      </button>
+                      {encounters.length > 0 && (
+                        <select
+                          className="input"
+                          style={{ width: 'auto', padding: '2px 6px', fontSize: 10 }}
+                          defaultValue=""
+                          onChange={async (e) => {
+                            if (!e.target.value) return;
+                            await patch(e.target.value, {
+                              addSource: { ref: s.ref, he: s.he, en: s.en, addedAt: new Date().toISOString() },
+                            });
+                            refresh();
+                            e.target.value = '';
+                          }}>
+                          <option value="" disabled>→ File</option>
+                          {encounters.map((enc) => (
+                            <option key={enc.id} value={enc.id}>{enc.congregantName}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
                   {s.en && <div className="scholar-source-text">{s.en.substring(0, 200)}{s.en.length > 200 ? '...' : ''}</div>}
                   {s.relevance && <div className="scholar-source-why">{s.relevance}</div>}
                 </div>
