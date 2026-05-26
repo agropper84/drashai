@@ -1,6 +1,5 @@
 'use client';
-// Plan 5 — clicking the dot toggles done; clicking the label navigates only.
-// Mark delivered batches togglePhase + sealed into ONE PATCH.
+// Plan 8 — always renders. Falls back to a generic workflow when nothing matches.
 
 import { useRouter } from 'next/navigation';
 import { StatusSpine } from '../StatusSpine';
@@ -12,18 +11,15 @@ import type { Encounter } from '@/app/_lib/types';
 export function FileDetailSpine({ file }: { file: Encounter }) {
   const router = useRouter();
   const { patch } = useEncounters();
-  const { getByTemplate, getById } = useWorkflows();
-  const workflow = (file.workflowId && getById(file.workflowId)) || getByTemplate(file.type);
-  if (!workflow || workflow.phases.length === 0) return null;
+  const { getEffectiveWorkflow } = useWorkflows();
+  const workflow = getEffectiveWorkflow(file);
+  if (workflow.phases.length === 0) return null;
 
   const state = derivePhaseState(file, workflow);
   const last = workflow.phases[workflow.phases.length - 1];
   const isDelivered = isWorkflowDone(state, workflow);
 
-  const onDotClick = (phase: string) => {
-    patch(file.id, { togglePhase: phase });
-  };
-
+  const onDotClick = (phase: string) => patch(file.id, { togglePhase: phase });
   const onLabelClick = (phase: string) => {
     const tab = tabForPhase(phase, workflow);
     router.push(`/files/${file.id}/${tab}`);
@@ -31,7 +27,6 @@ export function FileDetailSpine({ file }: { file: Encounter }) {
 
   const markDelivered = async () => {
     if (isDelivered) return;
-    // B9 — single PATCH with both verbs so the backend applies them atomically.
     const body: Record<string, unknown> = { togglePhase: last };
     if (workflow.autoSeal && !file.sealed) body.sealed = true;
     await patch(file.id, body);

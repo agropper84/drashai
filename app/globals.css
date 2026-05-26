@@ -2232,3 +2232,301 @@ button.spine-dot:hover { transform: scale(1.25); }
   display: flex;
   align-items: center;
 }
+/* Plan 8 — append to app/globals.css.
+   REPLACES the Plan 2 .detail-with-rail rules — search for the old rules
+   and remove them, then paste these in. */
+
+/* ==== file-detail layout ==== */
+.detail-with-rail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 24px;
+  align-items: start;
+}
+.detail-with-rail.rail-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+@media (max-width: 880px) {
+  .detail-with-rail,
+  .detail-with-rail.rail-collapsed {
+    grid-template-columns: 1fr;
+  }
+}
+.detail-main {
+  min-width: 0; /* prevents grid blowout if children have long content */
+}
+
+/* ==== task rail dock (collapsed mode) ==== */
+.task-rail-dock {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--rule-soft);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  padding: 16px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--ink-2);
+  box-shadow: var(--shadow-card);
+  z-index: 10;
+  transition: background 100ms, color 100ms;
+}
+.task-rail-dock:hover {
+  background: var(--bg-card-hi);
+  color: var(--ink);
+}
+.task-rail-dock-chev {
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.task-rail-dock-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-weight: 500;
+}
+
+/* ==== composer mode toggle ==== */
+.composer-mode-toggle {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  background: var(--bg-sunken);
+  border-radius: 999px;
+  padding: 2px;
+  gap: 1px;
+  z-index: 2;
+}
+.composer-mode-toggle button {
+  background: transparent;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--ink-3);
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.04em;
+}
+.composer-mode-toggle button.active {
+  background: var(--bg-card-hi);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+  font-weight: 500;
+}
+
+/* ==== inline source token ==== */
+.inline-source {
+  display: inline-block;
+  margin: 6px 0;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border-left: 3px solid var(--gold);
+  border-radius: 0 4px 4px 0;
+  font-family: 'Cormorant Garamond', serif;
+  position: relative;
+  max-width: 100%;
+}
+.inline-source-cite {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.inline-source-he {
+  display: block;
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 17px;
+  color: var(--ink);
+  direction: rtl;
+  margin-bottom: 4px;
+}
+.inline-source-en {
+  display: block;
+  font-style: italic;
+  color: var(--ink-2);
+  font-size: 16px;
+}
+.inline-source-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: transparent;
+  border: none;
+  color: var(--ink-4);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 100ms;
+}
+.inline-source:hover .inline-source-remove { opacity: 1; }
+.inline-source-remove:hover { color: var(--accent); }
+
+/* ==== source picker ==== */
+.source-picker-shroud {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.1);
+  z-index: 60;
+}
+.source-picker {
+  background: var(--bg-card-hi);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lift);
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  max-height: 480px;
+  overflow: hidden;
+}
+.source-picker-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule-soft);
+  gap: 10px;
+}
+.source-picker-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--ink);
+}
+.source-picker-kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-3);
+  padding: 2px 6px;
+  background: var(--bg-sunken);
+  border-radius: 3px;
+  letter-spacing: 0.06em;
+}
+.source-picker-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+.source-picker-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+.source-picker-hit {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.source-picker-hit.active { background: var(--bg-sunken); }
+.source-picker-hit-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--ink-3);
+  background: var(--bg-card);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-right: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.source-picker-hit-ref {
+  font-weight: 600;
+  color: var(--ink);
+}
+.source-picker-hit-en {
+  display: block;
+  margin-top: 3px;
+  font-style: italic;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.source-picker-foot {
+  padding: 6px 14px;
+  border-top: 1px solid var(--rule-soft);
+  display: flex;
+  gap: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-3);
+  letter-spacing: 0.06em;
+}
+.source-picker-foot kbd {
+  background: var(--bg-sunken);
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin: 0 2px;
+  font-size: 9px;
+}
+
+/* ==== attached sources panel ==== */
+.attached-sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.attached-source-row {
+  background: var(--bg-card-hi);
+  border: 1px solid var(--rule-soft);
+  border-radius: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 100ms, border-color 100ms;
+}
+.attached-source-row:hover {
+  background: var(--bg-card);
+  border-color: var(--rule);
+}
+.attached-source-ref {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+  margin-bottom: 3px;
+}
+.attached-source-he {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 13px;
+  color: var(--ink-1);
+  direction: rtl;
+  line-height: 1.3;
+}
+.attached-source-en {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.3;
+  margin-top: 2px;
+}

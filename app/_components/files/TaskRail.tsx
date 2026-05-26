@@ -1,14 +1,22 @@
 'use client';
-// Right rail on the file detail. Collapsible — stays in line with the header.
-// Persists tasks via the encounters store (api.encounters.patch).
+// Plan 8 — fully collapsible. When collapsed, the rail is unmounted from
+// the grid; a floating "Tasks" handle docks to the right edge of the viewport
+// and re-expands it on click. The main content reclaims the full width.
 
 import { useState } from 'react';
 import { useEncounters } from '@/app/_lib/encounters-store';
 import type { Encounter, Task } from '@/app/_lib/types';
 
-export function TaskRail({ file }: { file: Encounter }) {
+export function TaskRail({
+  file,
+  collapsed,
+  onCollapseChange,
+}: {
+  file: Encounter;
+  collapsed: boolean;
+  onCollapseChange: (collapsed: boolean) => void;
+}) {
   const { patch } = useEncounters();
-  const [collapsed, setCollapsed] = useState(false);
   const [newTask, setNewTask] = useState('');
 
   const tasks = file.tasks || [];
@@ -25,21 +33,18 @@ export function TaskRail({ file }: { file: Encounter }) {
   };
 
   if (collapsed) {
+    // Floating dock — outside the grid. Sits at the right edge of the viewport.
     return (
-      <div className="task-rail rail-collapsed" onClick={() => setCollapsed(false)}>
-        <div className="task-rail-head">
-          <button
-            type="button"
-            className="task-rail-collapse"
-            onClick={(e) => { e.stopPropagation(); setCollapsed(false); }}
-            title="Expand tasks">
-            <Chevron dir="left"/>
-          </button>
-          <span className="heb-stack" style={{ fontFamily: 'JetBrains Mono', color: 'var(--ink-3)' }}>
-            {open.length} TASKS
-          </span>
-        </div>
-      </div>
+      <button
+        type="button"
+        className="task-rail-dock"
+        onClick={() => onCollapseChange(false)}
+        title="Show tasks">
+        <span className="task-rail-dock-chev">‹</span>
+        <span className="task-rail-dock-label">
+          {open.length} TASK{open.length === 1 ? '' : 'S'}
+        </span>
+      </button>
     );
   }
 
@@ -53,8 +58,8 @@ export function TaskRail({ file }: { file: Encounter }) {
         <button
           type="button"
           className="task-rail-collapse"
-          onClick={() => setCollapsed(true)}
-          title="Collapse">
+          onClick={() => onCollapseChange(true)}
+          title="Hide tasks">
           <Chevron dir="right"/>
         </button>
       </div>
@@ -104,7 +109,7 @@ export function TaskRail({ file }: { file: Encounter }) {
   );
 }
 
-function TaskRow({ task, onToggle, onRemove }: { task: Task; onToggle: () => void; onRemove: () => void }) {
+function TaskRow({ task, onToggle }: { task: Task; onToggle: () => void; onRemove: () => void }) {
   return (
     <div className={'task' + (task.done ? ' done' : '')} onClick={onToggle}>
       <input

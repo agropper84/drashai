@@ -1,0 +1,186 @@
+/* Plan 9 — append to app/globals.css */
+
+/* ==== ethereal vis ==== */
+.ethereal-vis {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+.ethereal-vis .ethereal-ring,
+.ethereal-vis .ethereal-dot {
+  position: absolute;
+  border-radius: 50%;
+}
+.ethereal-vis .ethereal-ring {
+  inset: 0;
+  border: 1px solid var(--accent-soft);
+  background: transparent;
+  opacity: 0;
+  animation: ethereal-ring 8s cubic-bezier(.45, .05, .55, .95) infinite;
+}
+.ethereal-vis .ethereal-ring.r2 { animation-delay: -2.67s; }
+.ethereal-vis .ethereal-ring.r3 { animation-delay: -5.34s; }
+
+.ethereal-vis .ethereal-dot {
+  width: 28%;
+  height: 28%;
+  background: var(--accent);
+  filter: blur(0.5px);
+  animation: ethereal-dot 4s ease-in-out infinite;
+}
+
+[data-theme="sacred"] .ethereal-vis .ethereal-dot { background: var(--gold); }
+
+@keyframes ethereal-ring {
+  0%   { transform: scale(0.25); opacity: 0; }
+  20%  { opacity: 0.55; }
+  80%  { opacity: 0.05; }
+  100% { transform: scale(1);    opacity: 0; }
+}
+@keyframes ethereal-dot {
+  0%, 100% { transform: scale(0.9); }
+  50%      { transform: scale(1.1); }
+}
+
+/* Paused — freeze everything */
+.ethereal-vis.paused .ethereal-ring,
+.ethereal-vis.paused .ethereal-dot {
+  animation-play-state: paused;
+}
+.ethereal-vis.paused .ethereal-dot { opacity: 0.45 !important; }
+
+/* Reduced motion — kill the animation, keep a steady glow */
+@media (prefers-reduced-motion: reduce) {
+  .ethereal-vis .ethereal-ring { animation: none; opacity: 0.18; transform: scale(0.7); }
+  .ethereal-vis .ethereal-ring.r2 { transform: scale(0.85); opacity: 0.12; }
+  .ethereal-vis .ethereal-ring.r3 { transform: scale(1); opacity: 0.06; }
+  .ethereal-vis .ethereal-dot { animation: none; }
+}
+
+/* ==== recording bar ==== */
+.recording-bar {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  box-shadow: var(--shadow-lift);
+  min-width: 320px;
+  max-width: 520px;
+  animation: recording-bar-in 280ms cubic-bezier(.2, .7, .2, 1);
+  font-family: inherit;
+}
+@keyframes recording-bar-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+.recording-bar.paused {
+  background: var(--bg-card);
+}
+
+.recording-bar-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 60px;
+}
+.recording-bar-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--ink);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+.recording-bar-status {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 11px;
+  color: var(--ink-3);
+  line-height: 1;
+}
+
+.recording-bar-label {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--rule);
+  padding: 4px 6px;
+  outline: none;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px;
+  color: var(--ink);
+  font-style: italic;
+  min-width: 100px;
+  transition: border-color 100ms;
+}
+.recording-bar-label:focus { border-bottom-color: var(--accent); }
+.recording-bar-label::placeholder { color: var(--ink-4); }
+
+.recording-bar-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 100ms, color 100ms, border-color 100ms;
+}
+.recording-bar-btn:hover {
+  background: var(--bg-sunken);
+  color: var(--ink);
+}
+.recording-bar-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.recording-bar-btn.flag:hover { color: var(--gold); }
+.recording-bar-btn.end {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.recording-bar-btn.end:hover { background: var(--accent); color: var(--bg-card-hi); }
+[data-theme="sacred"] .recording-bar-btn.end:hover { color: var(--bg); }
+
+@media (max-width: 640px) {
+  .recording-bar {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    max-width: none;
+  }
+  .recording-bar-label { min-width: 0; }
+}
+
+/* ==== sidebar recording dot ==== */
+.sidebar-recording-dot {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.sidebar-recording-dot::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.35;
+  animation: sidebar-recording-pulse 2s ease-in-out infinite;
+}
+@keyframes sidebar-recording-pulse {
+  0%, 100% { transform: scale(0.7); opacity: 0.35; }
+  50%      { transform: scale(1.4); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-recording-dot::before { animation: none; transform: scale(1); opacity: 0.15; }
+}
