@@ -4646,3 +4646,85 @@ button.spine-dot:hover { transform: scale(1.25); }
 }
 .nf-add-type-input:focus { border-bottom-color: var(--accent); }
 .nf-add-type-input::placeholder { color: var(--ink-4); font-style: italic; }
+
+/* ==== Login page ==== */
+.login-page {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-page);
+  padding: 24px 16px;
+}
+.login-card {
+  width: 100%; max-width: 380px;
+  background: var(--bg-card-hi);
+  border: 1px solid var(--rule-soft);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lift);
+  padding: 48px 40px 36px;
+  text-align: center;
+}
+.login-logo {
+  margin-bottom: 24px;
+}
+.login-logo-heb {
+  display: block;
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 42px; font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+  direction: rtl;
+}
+.login-logo-en {
+  display: block;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px; font-style: italic;
+  color: var(--ink-3);
+  letter-spacing: 0.12em;
+  margin-top: 2px;
+}
+.login-tagline {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px; font-style: italic;
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin-bottom: 32px;
+}
+.login-google-btn {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; width: 100%;
+  background: var(--bg); border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 12px 20px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px; font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 200ms;
+}
+.login-google-btn:hover {
+  border-color: var(--ink-3);
+  box-shadow: var(--shadow-card);
+}
+.login-footer {
+  margin-top: 28px;
+}
+.login-secure {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  margin: 0 0 10px;
+}
+.login-links {
+  display: flex; align-items: center;
+  justify-content: center; gap: 8px;
+  font-size: 12px; margin: 0;
+}
+.login-links a {
+  color: var(--ink-3);
+  text-decoration: none;
+  transition: color 160ms;
+}
+.login-links a:hover { color: var(--ink); }
+.login-links span { color: var(--ink-4); }
