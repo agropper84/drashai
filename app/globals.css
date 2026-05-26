@@ -3751,6 +3751,41 @@ button.spine-dot:hover { transform: scale(1.25); }
 }
 
 /* edit/delete actions on generated content */
+.fd-gen-section {
+  max-width: 720px; margin: 32px auto 0;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.fd-gen-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 4px;
+}
+.fd-gen-header-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.fd-gen-clear {
+  background: none; border: 1px solid var(--rule-soft);
+  border-radius: 999px; padding: 4px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--ink-4);
+  cursor: pointer; letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: all 160ms;
+}
+.fd-gen-clear:hover { color: var(--accent); border-color: var(--accent); }
+.fd-gen-paper {
+  padding: 40px 48px !important;
+}
+.fd-gen-body {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; line-height: 1.75;
+  color: var(--ink);
+}
+.fd-gen-body p {
+  margin: 0 0 1.1em; white-space: pre-wrap;
+}
+.fd-gen-body p:last-child { margin-bottom: 0; }
 .fd-gen-action {
   background: none; border: none;
   font-family: 'JetBrains Mono', monospace;

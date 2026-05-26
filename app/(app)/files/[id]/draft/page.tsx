@@ -352,19 +352,38 @@ export default function DraftTab() {
       </div>
 
       {!zen && (showStreamed || previousDrafts.length > 0) && (
-        <div style={{ maxWidth: 720, margin: '24px auto 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="fd-gen-section">
+          <div className="fd-gen-header">
+            <span className="fd-gen-header-label">AI Drafts</span>
+            {previousDrafts.length > 0 && !showStreamed && (
+              <button
+                className="fd-gen-clear"
+                onClick={async () => {
+                  if (!confirm('Delete all AI-generated drafts? This cannot be undone.')) return;
+                  // Remove all generated content
+                  for (let i = previousDrafts.length - 1; i >= 0; i--) {
+                    await patch(file.id, { removeGenerated: i });
+                  }
+                  refresh();
+                  setEditingGenIdx(null);
+                }}>
+                Clear all
+              </button>
+            )}
+          </div>
+
           {showStreamed && (
-            <div className="fd-paper" data-selectable="true">
-              <div className="fd-paper-meta" style={{ color: 'var(--gold)' }}>AI Generated</div>
-              <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, lineHeight: 1.75 }}>
+            <div className="fd-paper fd-gen-paper" data-selectable="true">
+              <div className="fd-paper-meta" style={{ color: 'var(--gold)' }}>Generating...</div>
+              <div className="fd-gen-body">
                 {streamed.split('\n\n').map((para, i) => (
-                  <p key={i} style={{ margin: '0 0 1.1em', whiteSpace: 'pre-wrap' }}>{para}</p>
+                  <p key={i}>{para}</p>
                 ))}
               </div>
             </div>
           )}
-          {!showStreamed && previousDrafts.length > 0 && previousDrafts.map((g, i) => (
-            <div key={i} className="fd-paper" data-selectable="true">
+          {!showStreamed && previousDrafts.map((g, i) => (
+            <div key={i} className="fd-paper fd-gen-paper" data-selectable="true">
               <div className="fd-paper-meta">
                 {g.type.replace('_', ' ')} · {new Date(g.generatedAt).toLocaleDateString()}
                 <button
@@ -393,7 +412,7 @@ export default function DraftTab() {
                     className="fd-paper-textarea"
                     value={editingGenContent}
                     onChange={(e) => setEditingGenContent(e.target.value)}
-                    style={{ minHeight: 200 }}
+                    style={{ minHeight: 300 }}
                   />
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
                     <button className="btn ghost small" onClick={() => setEditingGenIdx(null)}>Cancel</button>
@@ -409,9 +428,9 @@ export default function DraftTab() {
                   </div>
                 </>
               ) : (
-                <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 18, lineHeight: 1.75 }}>
+                <div className="fd-gen-body">
                   {g.content.split('\n\n').map((para, j) => (
-                    <p key={j} style={{ margin: '0 0 1.1em', whiteSpace: 'pre-wrap' }}>{para}</p>
+                    <p key={j}>{para}</p>
                   ))}
                 </div>
               )}
