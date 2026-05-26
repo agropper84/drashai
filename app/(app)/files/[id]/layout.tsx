@@ -1,109 +1,103 @@
 'use client';
-// Plan 8 — header polish (no duplicate name lines) + fully-collapsible rail.
-// Rail collapse state is owned by the layout so the grid template can change.
+// Plan 11 — clean, calm header. Workflow spine is hidden behind a Progress
+// pill. Tasks live in a floating corner pill. Documents tab stays.
 
 import Link from 'next/link';
 import { useState } from 'react';
 import { notFound, usePathname } from 'next/navigation';
-import { Crumb } from '@/app/_components/Crumb';
-import { TaskRail } from '@/app/_components/files/TaskRail';
-import { FileDetailSpine } from '@/app/_components/files/FileDetailSpine';
 import { useActiveFile } from '@/app/_lib/use-active-file';
-import { useTemplates } from '@/app/_lib/templates-store';
+import { useWorkflows } from '@/app/_lib/workflows-store';
+import { derivePhaseState } from '@/app/_lib/phase-heuristics';
+import { HeaderProgressPill } from '@/app/_components/files/HeaderProgressPill';
+import { CollapsibleSpine } from '@/app/_components/files/CollapsibleSpine';
+import { TasksPill } from '@/app/_components/files/TasksPill';
 
 const TABS = [
-  { seg: 'conversation', en: 'Conversation', heb: 'שיחה' },
-  { seg: 'documents',    en: 'Documents',    heb: 'מסמכים' },
-  { seg: 'sources',      en: 'Sources',      heb: 'מקורות' },
-  { seg: 'insights',     en: 'Insights',     heb: 'ניצוצות' },
-  { seg: 'draft',        en: 'Draft',        heb: 'טיוטה' },
-  { seg: 'final',        en: 'Final',        heb: 'סופי' },
+  { seg: 'conversation', en: 'Conversation' },
+  { seg: 'documents',    en: 'Documents' },
+  { seg: 'sources',      en: 'Sources' },
+  { seg: 'draft',        en: 'Draft' },
+  { seg: 'final',        en: 'Final' },
 ];
 
 export default function FileLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { id, file, loading } = useActiveFile();
-  const { getById: getTemplate } = useTemplates();
-  const [railCollapsed, setRailCollapsed] = useState(false);
+  const { getEffectiveWorkflow } = useWorkflows();
+  const [spineOpen, setSpineOpen] = useState(false);
 
   if (loading) return <div className="mono" style={{ color: 'var(--ink-3)' }}>Loading...</div>;
   if (!file || !id) return notFound();
 
-  const tpl = getTemplate(file.type);
+  const workflow = getEffectiveWorkflow(file);
+  const phaseState = derivePhaseState(file, workflow);
   const subject = file.subject || file.congregantName;
-  // Only render the secondary congregantName line when it's actually different
-  // from the subject. Prevents the "test / test" duplicate from the screenshot.
-  const showSecondaryName = !!file.congregantName && file.congregantName !== subject;
 
   return (
     <>
-      <Crumb items={[{ href: '/files', label: 'Files' }, { label: subject }]} />
+      <div className="fd-page">
+        <div className="fd-crumb">
+          <Link href="/files">Files</Link>
+          <span className="fd-crumb-sep">›</span>
+          <span className="fd-crumb-current">{subject}</span>
+        </div>
 
-      <div className={'detail-with-rail' + (railCollapsed ? ' rail-collapsed' : '')}>
-        <div className="detail-main">
-          <div className="file-detail-head">
-            <div>
-              <div className="page-eyebrow">
-                {tpl?.en || file.topic || 'Encounter'} · {file.date}
+        <div className="fd-header">
+          <div className="fd-title-block">
+            <h1 className="fd-title">{subject}</h1>
+            {file.subjectHeb && <div className="fd-title-heb">{file.subjectHeb}</div>}
+          </div>
+
+          <div className="fd-aside">
+            {file.nextEvent && (
+              <div className="fd-next">
+                <div className="fd-next-label">{file.type || 'Encounter'}</div>
+                <div className="fd-next-event">{file.nextEvent}</div>
+                {file.nextEventRel && <div className="fd-next-rel">{file.nextEventRel}</div>}
               </div>
-              <h1 className="file-detail-title">{subject}</h1>
-              {file.subjectHeb && (
-                <div className="file-detail-en heb-display" style={{ direction: 'rtl', fontSize: 22 }}>
-                  {file.subjectHeb}
-                </div>
-              )}
-              {showSecondaryName && (
-                <div className="file-detail-en">{file.congregantName}</div>
-              )}
-              {file.nextEvent && (
-                <div className="file-detail-meta-row">
-                  <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{file.nextEvent}</span>
-                  {file.nextEventRel && (
-                    <>
-                      <span className="crumb-sep">·</span>
-                      <span>{file.nextEventRel}</span>
-                    </>
-                  )}
-                </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <HeaderProgressPill
+                workflow={workflow}
+                current={phaseState.current}
+                completed={phaseState.completed}
+                open={spineOpen}
+                onClick={() => setSpineOpen((v) => !v)}
+              />
+              {file.sealed && (
+                <span className="badge sealed" style={{ fontSize: 9, padding: '3px 7px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  Sealed
+                </span>
               )}
             </div>
           </div>
-
-          <FileDetailSpine file={file}/>
-
-          <div className="tabs">
-            {TABS.map((tab) => {
-              const href = `/files/${id}/${tab.seg}`;
-              const active = pathname === href;
-              const count = tab.seg === 'sources' ? file.sources?.length : undefined;
-              return (
-                <Link key={tab.seg} href={href} className={`tab ${active ? 'active' : ''}`}>
-                  <span className="en">{tab.en}</span>
-                  {count ? <span className="count">{count}</span> : null}
-                </Link>
-              );
-            })}
-          </div>
-
-          {children}
         </div>
 
-        {!railCollapsed && (
-          <TaskRail
-            file={file}
-            collapsed={railCollapsed}
-            onCollapseChange={setRailCollapsed}
-          />
-        )}
+        <CollapsibleSpine file={file} open={spineOpen}/>
+
+        <div className="fd-tabs">
+          {TABS.map((tab) => {
+            const href = `/files/${id}/${tab.seg}`;
+            const active = pathname === href;
+            const count =
+              tab.seg === 'sources' ? file.sources?.length :
+              tab.seg === 'documents' ? undefined : // hook up doc count when you wire it
+              undefined;
+            return (
+              <Link key={tab.seg} href={href} className={`fd-tab ${active ? 'active' : ''}`}>
+                {tab.en}
+                {count != null && count > 0 && <span className="fd-tab-count">{count}</span>}
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="fd-content">{children}</div>
       </div>
 
-      {railCollapsed && (
-        <TaskRail
-          file={file}
-          collapsed={railCollapsed}
-          onCollapseChange={setRailCollapsed}
-        />
-      )}
+      <TasksPill file={file}/>
     </>
   );
 }

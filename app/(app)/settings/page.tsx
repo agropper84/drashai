@@ -7,6 +7,15 @@ import { ViewToggle } from '@/app/_components/ViewToggle';
 import { ConfirmDialog } from '@/app/_components/ConfirmDialog';
 import { useTheme } from '@/app/_lib/theme';
 import { getZenDefault, setZenDefault } from '@/app/_lib/zen-mode';
+import {
+  loadDictationSettings,
+  saveDictationSettings,
+  getDefaultSettings,
+  DEFAULT_RABBINICAL_DICTIONARY,
+  DEFAULT_REFINE_PROMPT,
+  DEFAULT_FILLER_WORDS,
+  type DictationSettings,
+} from '@/app/_lib/dictation-settings';
 import { useWorkflows } from '@/app/_lib/workflows-store';
 import { useTemplates } from '@/app/_lib/templates-store';
 import { useEncounters } from '@/app/_lib/encounters-store';
@@ -15,7 +24,7 @@ import type { Encounter, Workflow, FileTab } from '@/app/_lib/types';
 
 const TABS: FileTab[] = ['conversation', 'documents', 'sources', 'insights', 'draft', 'final'];
 
-type SettingsTab = 'keys' | 'transcription' | 'appearance' | 'workflows' | 'privacy' | 'account';
+type SettingsTab = 'keys' | 'transcription' | 'dictation' | 'appearance' | 'workflows' | 'privacy' | 'account';
 
 export default function SettingsPage() {
   const { theme, setTheme, mode, setMode } = useTheme();
@@ -84,6 +93,7 @@ export default function SettingsPage() {
         {([
           { key: 'keys', en: 'API Keys' },
           { key: 'transcription', en: 'Transcription' },
+          { key: 'dictation', en: 'Dictation' },
           { key: 'appearance', en: 'Appearance' },
           { key: 'workflows', en: 'Workflows' },
           { key: 'privacy', en: 'Privacy' },
@@ -212,6 +222,9 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* ── Dictation ── */}
+      {tab === 'dictation' && <DictationSection />}
 
       {/* ── Appearance ── */}
       {tab === 'appearance' && (
@@ -473,6 +486,168 @@ function AccountSection({ userName }: { userName: string }) {
         onCancel={() => setEraseOpen(false)}
         onConfirm={eraseAll}
       />
+    </div>
+  );
+}
+
+// ── Dictation ──────────────────────────────────────────────
+function DictationSection() {
+  const [ds, setDs] = useState<DictationSettings>(() => loadDictationSettings());
+  const [newTerm, setNewTerm] = useState('');
+
+  const update = (patch: Partial<DictationSettings>) => {
+    const next = { ...ds, ...patch };
+    setDs(next);
+    saveDictationSettings(next);
+  };
+
+  const addTerm = () => {
+    const term = newTerm.trim();
+    if (!term || ds.dictionary.includes(term)) return;
+    update({ dictionary: [...ds.dictionary, term] });
+    setNewTerm('');
+  };
+
+  const removeTerm = (term: string) => {
+    update({ dictionary: ds.dictionary.filter((t) => t !== term) });
+  };
+
+  const resetDictionary = () => {
+    update({ dictionary: [...DEFAULT_RABBINICAL_DICTIONARY] });
+  };
+
+  const resetPrompt = () => {
+    update({ refinePrompt: DEFAULT_REFINE_PROMPT });
+  };
+
+  return (
+    <div className="settings-section">
+      <div style={{
+        padding: '14px 18px', background: 'var(--bg-card-hi)',
+        border: '1px solid var(--rule-soft)', borderRadius: 6,
+        fontFamily: 'Cormorant Garamond, serif', fontSize: 15, color: 'var(--ink-1)',
+        marginBottom: 16, lineHeight: 1.5, fontStyle: 'italic',
+      }}>
+        Voice dictation lets you speak directly into the draft composer. Customize the dictionary and refinement prompt to match your rabbinical vocabulary.
+      </div>
+
+      {/* Refinement toggle */}
+      <div className="settings-block">
+        <div className="settings-row">
+          <div>
+            <div className="settings-label">AI refinement</div>
+            <div className="settings-help">
+              After transcription, Claude cleans up the text — fixing terminology, punctuation, and structure.
+            </div>
+          </div>
+          <div className="mode-toggle">
+            <button className={ds.refineEnabled ? 'active' : ''} onClick={() => update({ refineEnabled: true })}>On</button>
+            <button className={!ds.refineEnabled ? 'active' : ''} onClick={() => update({ refineEnabled: false })}>Off</button>
+          </div>
+        </div>
+
+        <div className="settings-row">
+          <div>
+            <div className="settings-label">Spoken punctuation</div>
+            <div className="settings-help">Convert "period", "comma", "new paragraph" to actual punctuation.</div>
+          </div>
+          <div className="mode-toggle">
+            <button className={ds.convertSpokenPunctuation ? 'active' : ''} onClick={() => update({ convertSpokenPunctuation: true })}>On</button>
+            <button className={!ds.convertSpokenPunctuation ? 'active' : ''} onClick={() => update({ convertSpokenPunctuation: false })}>Off</button>
+          </div>
+        </div>
+
+        <div className="settings-row">
+          <div>
+            <div className="settings-label">Remove filler words</div>
+            <div className="settings-help">Strip "um", "uh", "like", "you know" from transcription.</div>
+          </div>
+          <div className="mode-toggle">
+            <button className={ds.removeFillerWords ? 'active' : ''} onClick={() => update({ removeFillerWords: true })}>On</button>
+            <button className={!ds.removeFillerWords ? 'active' : ''} onClick={() => update({ removeFillerWords: false })}>Off</button>
+          </div>
+        </div>
+
+        <div className="settings-row">
+          <div>
+            <div className="settings-label">Insert mode</div>
+            <div className="settings-help">How dictated text is added to the composer.</div>
+          </div>
+          <div className="mode-toggle">
+            <button className={ds.insertMode === 'append' ? 'active' : ''} onClick={() => update({ insertMode: 'append' })}>Append</button>
+            <button className={ds.insertMode === 'replace' ? 'active' : ''} onClick={() => update({ insertMode: 'replace' })}>Replace</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Refinement prompt */}
+      <div className="settings-block" style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div className="settings-label">Refinement prompt</div>
+          <button className="btn ghost small" onClick={resetPrompt}>Reset to default</button>
+        </div>
+        <div className="settings-help" style={{ marginBottom: 8 }}>
+          Instructions sent to Claude when refining your dictated text. Customize for your style.
+        </div>
+        <textarea
+          className="input"
+          rows={8}
+          value={ds.refinePrompt}
+          onChange={(e) => update({ refinePrompt: e.target.value })}
+          style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, lineHeight: 1.6 }}
+        />
+      </div>
+
+      {/* Dictionary */}
+      <div className="settings-block" style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div>
+            <div className="settings-label">Dictionary</div>
+            <div className="settings-help">
+              {ds.dictionary.length} terms — sent to ElevenLabs to boost recognition accuracy for rabbinical vocabulary.
+            </div>
+          </div>
+          <button className="btn ghost small" onClick={resetDictionary}>Reset to defaults</button>
+        </div>
+
+        {/* Add term */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <input
+            className="input"
+            value={newTerm}
+            onChange={(e) => setNewTerm(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') addTerm(); }}
+            placeholder="Add a term…"
+            style={{ flex: 1 }}
+          />
+          <button className="btn small" onClick={addTerm} disabled={!newTerm.trim()}>Add</button>
+        </div>
+
+        {/* Filler words */}
+        {ds.removeFillerWords && (
+          <div style={{ marginBottom: 12 }}>
+            <div className="settings-label" style={{ fontSize: 12, marginBottom: 6 }}>Filler words</div>
+            <div className="dictation-terms">
+              {ds.fillerWords.map((w) => (
+                <span key={w} className="dictation-term filler">
+                  {w}
+                  <button onClick={() => update({ fillerWords: ds.fillerWords.filter((f) => f !== w) })}>×</button>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Term list */}
+        <div className="dictation-terms">
+          {ds.dictionary.map((term) => (
+            <span key={term} className="dictation-term">
+              {term}
+              <button onClick={() => removeTerm(term)}>×</button>
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

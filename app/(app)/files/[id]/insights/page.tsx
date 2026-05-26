@@ -1,9 +1,5 @@
-'use client';
-import { FileSparksTab } from '@/app/_components/files/FileSparksTab';
-import { useActiveFile } from '@/app/_lib/use-active-file';
-
-export default function InsightsTab() {
-  const { file } = useActiveFile();
-  if (!file) return null;
-  return <FileSparksTab file={file}/>;
+import { redirect } from 'next/navigation';
+export default function InsightsRedirect({ params }: { params: Promise<{ id: string }> }) {
+  // Insights folded into Conversation (Plan 11)
+  return redirect('../conversation');
 }

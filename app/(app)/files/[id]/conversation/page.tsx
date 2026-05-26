@@ -1,12 +1,11 @@
 'use client';
-// Plan 10 — Conversation tab gains translate toggle + data-selectable for
-// the selection menu.
+// Plan 11 — Conversation tab with cleaner type AND a small file-sparks
+// subsection at the bottom (Insights tab is gone).
 
 import { useEffect, useRef, useState } from 'react';
-import { I } from '@/app/_components/Icons';
 import { useActiveFile } from '@/app/_lib/use-active-file';
 import { useModal } from '@/app/_components/modals/ModalProvider';
-import { TranslatePanel } from '@/app/_components/translate/TranslatePanel';
+import { FileSparksTab } from '@/app/_components/files/FileSparksTab';
 
 export default function ConversationTab() {
   const { id, file, patch } = useActiveFile();
@@ -14,10 +13,8 @@ export default function ConversationTab() {
   const [transcriptDraft, setTranscriptDraft] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const [showTranslate, setShowTranslate] = useState(false);
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // B4 — re-sync when file.updatedAt changes (e.g. recording modal saved).
   useEffect(() => {
     if (file) {
       setTranscriptDraft(file.transcript || '');
@@ -39,77 +36,75 @@ export default function ConversationTab() {
     notesTimer.current = setTimeout(() => patch(file.id, { notes: text }), 1000);
   };
 
+  const lines = (file.transcript || '').split('\n').filter((l: string) => l.trim());
+  const hasSpeakers = lines.some((l) => {
+    const c = l.indexOf(':');
+    return c > 0 && c < 30;
+  });
+
   return (
     <div>
-      <div className="section-head">
-        <div>
-          <h2 className="section-title">שיחה</h2>
-          <div className="section-title-en">Conversation</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className={`btn small${showTranslate ? ' primary' : ''}`} onClick={() => setShowTranslate((v) => !v)}>
-            Translate
-          </button>
-          <button className="btn small" onClick={() => open('record', { fileId: file.id })}>
-            <span className="icon">{I.mic}</span> Record
-          </button>
-        </div>
-      </div>
+      <h2 className="fd-section-title">
+        <span>Conversation</span>
+        <span className="heb">שיחה</span>
+        <span className="accent-line"/>
+        <button className="btn ghost small" onClick={() => open('record', { fileId: file.id })}>
+          Continue recording
+        </button>
+      </h2>
 
-      {showTranslate && file.transcript && (
-        <TranslatePanel source={file.transcript} />
-      )}
-
-      {file.transcript && file.transcript.includes(':') && (
-        <div className="transcript" data-selectable="true" style={{ marginBottom: 20 }}>
-          {file.transcript.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => {
+      {hasSpeakers && (
+        <div className="fd-transcript" data-selectable="true">
+          {lines.map((line, i) => {
             const colonIdx = line.indexOf(':');
-            const hasSpeaker = colonIdx > 0 && colonIdx < 30;
-            const speaker = hasSpeaker ? line.substring(0, colonIdx).trim() : '';
-            const text = hasSpeaker ? line.substring(colonIdx + 1).trim() : line;
+            const has = colonIdx > 0 && colonIdx < 30;
+            const speaker = has ? line.substring(0, colonIdx).trim() : '';
+            const text = has ? line.substring(colonIdx + 1).trim() : line;
             return (
-              <div key={i} className="utterance">
-                <div className="utterance-time">
+              <div key={i} className="fd-utterance">
+                <div className="fd-utt-meta">
                   {String(Math.floor(i * 0.5)).padStart(2, '0')}:{String((i * 30) % 60).padStart(2, '0')}
+                  {speaker && <span className="fd-utt-meta-speaker">{speaker}</span>}
                 </div>
-                <div>
-                  {speaker && <span className="utterance-speaker">{speaker}</span>}
-                  <div className="utterance-text">{text}</div>
-                </div>
+                <div className="fd-utt-text">{text}</div>
               </div>
             );
           })}
         </div>
       )}
 
-      <textarea
-        className="input serif"
-        rows={8}
-        value={transcriptDraft}
-        onChange={(e) => setTranscriptDraft(e.target.value)}
-        placeholder={'Paste or type the encounter transcript here...\n\nFormat with speaker labels:\nRabbi: How are you feeling today?\nDavid: We\'ve been thinking a lot about mom...'}
-      />
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <button className="btn primary" onClick={saveTranscript} disabled={saving}>
-          {saving ? 'Saving...' : 'Save Transcript'}
-        </button>
-      </div>
-
-      <hr className="divider" />
-
-      <div className="section-head">
-        <div>
-          <h2 className="section-title" style={{ fontSize: 24 }}>הערות</h2>
-          <div className="section-title-en">Private Notes</div>
+      <div style={{ marginTop: hasSpeakers ? 32 : 0 }}>
+        <textarea
+          className="input serif"
+          rows={hasSpeakers ? 4 : 10}
+          value={transcriptDraft}
+          onChange={(e) => setTranscriptDraft(e.target.value)}
+          placeholder="Paste or type the encounter transcript here..."
+        />
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'flex-end' }}>
+          <button className="btn primary small" onClick={saveTranscript} disabled={saving}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </div>
       </div>
-      <textarea
-        className="input serif"
-        rows={4}
-        value={notes}
-        onChange={(e) => handleNotesChange(e.target.value)}
-        placeholder="Your private notes, themes to explore, relevant parsha connections..."
-      />
+
+      <div className="fd-notes-block">
+        <h2 className="fd-section-title">
+          <span>Private notes</span>
+          <span className="heb">הערות</span>
+          <span className="accent-line"/>
+        </h2>
+        <textarea
+          className="fd-notes-textarea"
+          value={notes}
+          onChange={(e) => handleNotesChange(e.target.value)}
+          placeholder="Anything you want to remember — themes, parsha connections, a phrase that struck you..."
+        />
+      </div>
+
+      <div className="fd-notes-block">
+        <FileSparksTab file={file}/>
+      </div>
     </div>
   );
 }

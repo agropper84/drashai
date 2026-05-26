@@ -16,12 +16,15 @@ import {
 import { NewFileModal } from './NewFileModal';
 import { RecordingModal } from './RecordingModal';
 import { SourceModal } from './SourceModal';
+import { DictationModal, DictationResult } from './DictationModal';
 
-type ModalKind = 'new' | 'record' | 'sources';
+type ModalKind = 'new' | 'record' | 'sources' | 'dictation';
 
 interface OpenOptions {
   /** When recording: which file (if any) the recording should append to. */
   fileId?: string;
+  /** When dictation: callback to insert the result into the composer. */
+  onDictationInsert?: (result: DictationResult) => void;
 }
 
 interface ModalCtx {
@@ -53,6 +56,15 @@ export function ModalProvider({ children }: { children: ReactNode }) {
       {active === 'new' && <NewFileModal onClose={close} />}
       {active === 'record' && <RecordingModal onClose={close} fileId={options?.fileId} />}
       {active === 'sources' && <SourceModal onClose={close} />}
+      {active === 'dictation' && (
+        <DictationModal
+          onClose={close}
+          onInsert={(result) => {
+            options?.onDictationInsert?.(result);
+            close();
+          }}
+        />
+      )}
     </Ctx.Provider>
   );
 }
