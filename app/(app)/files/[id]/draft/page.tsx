@@ -199,6 +199,11 @@ export default function DraftTab() {
 
   return (
     <div className={zen ? 'fd-zen' : undefined}>
+      {zen && (
+        <button className="fd-zen-exit" onClick={toggleZen} title="Exit zen mode (⌘.)">
+          ESC
+        </button>
+      )}
       <div className={translateActive && !zen ? 'fd-draft-split' : undefined}>
         <div className="fd-paper" data-selectable="true">
           <div className="fd-paper-meta">

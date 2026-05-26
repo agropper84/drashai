@@ -3799,25 +3799,79 @@ button.spine-dot:hover { transform: scale(1.25); }
 }
 
 /* zen mode */
+/* ==== zen mode ==== */
 .fd-zen {
   position: fixed; inset: 0; z-index: 45;
   background: var(--bg-page);
   display: flex; flex-direction: column;
-  align-items: center; justify-content: flex-start;
-  padding: 40px 24px 80px;
+  align-items: center; justify-content: center;
+  padding: 0;
   overflow-y: auto;
-  animation: zen-fade-in 240ms ease-out;
+  animation: zen-fade-in 400ms ease-out;
 }
 .fd-zen .fd-paper {
-  max-width: 720px; width: 100%;
-  flex: 1; display: flex; flex-direction: column;
+  max-width: 640px; width: 100%;
+  flex: none;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 48px 32px 120px;
+  border-radius: 0;
+  min-height: 100vh;
+}
+.fd-zen .fd-paper-meta {
+  opacity: 0;
+  transition: opacity 400ms;
+  position: static;
+  text-align: right;
+  margin-bottom: 12px;
+}
+.fd-zen:hover .fd-paper-meta,
+.fd-zen .fd-paper-meta:focus-within {
+  opacity: 1;
 }
 .fd-zen .fd-paper-textarea {
   flex: 1;
-  min-height: calc(100vh - 200px);
+  min-height: calc(100vh - 160px);
+  font-size: 20px;
+  line-height: 2;
 }
+.fd-zen .fd-paper-textarea::placeholder {
+  text-align: center;
+  color: var(--ink-4);
+}
+/* Hide formatting bar, mic, translate toggle in zen */
+.fd-zen .fd-format-bar { display: none; }
+.fd-zen .draft-mic { display: none; }
+.fd-zen .fd-translate-toggle { display: none; }
+/* Helper pill: hidden until hover near bottom */
 .fd-zen .fd-helper {
   z-index: 46;
+  opacity: 0;
+  transition: opacity 400ms;
+}
+.fd-zen:hover .fd-helper {
+  opacity: 1;
+}
+/* Subtle exit button in top-right corner, appears on hover */
+.fd-zen .fd-zen-exit {
+  position: fixed; top: 20px; right: 24px;
+  z-index: 47;
+  background: transparent; border: 1px solid transparent;
+  color: var(--ink-4);
+  font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.08em;
+  padding: 6px 14px; border-radius: 999px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 400ms;
+}
+.fd-zen:hover .fd-zen-exit {
+  opacity: 1;
+}
+.fd-zen .fd-zen-exit:hover {
+  border-color: var(--rule-soft);
+  color: var(--ink-2);
 }
 
 .fd-zen-toggle {

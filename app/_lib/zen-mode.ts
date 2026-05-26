@@ -25,12 +25,15 @@ export function useZenMode(initial?: boolean) {
     localStorage.setItem(STORAGE_KEY_ENABLED, zen ? '1' : '0');
   }, [zen]);
 
-  // Cmd/Ctrl + .
+  // Cmd/Ctrl + . to toggle, Escape to exit
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === '.') {
         e.preventDefault();
         setZen((v) => !v);
+      }
+      if (e.key === 'Escape') {
+        setZen(false);
       }
     };
     document.addEventListener('keydown', onKey);
