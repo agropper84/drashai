@@ -7,6 +7,7 @@ import { I, iconForType } from './Icons';
 import { Brand } from './Brand';
 import { useEncounters } from '@/app/_lib/encounters-store';
 import { useRecordingSession } from './recording/RecordingProvider';
+import { useModal } from './modals/ModalProvider';
 
 const ITEMS = [
   { href: '/files',     icon: I.home,     en: 'Files',     heb: 'תיקים' },
@@ -20,6 +21,7 @@ export function Sidebar({ userName }: { userName: string }) {
   const pathname = usePathname();
   const { encounters } = useEncounters();
   const rec = useRecordingSession();
+  const { open: openModal } = useModal();
   const recordingFileId = rec.session?.fileId;
   const recent = encounters.filter((e) => !e.archivedAt).slice(0, 3);
 
@@ -78,6 +80,14 @@ export function Sidebar({ userName }: { userName: string }) {
       )}
 
       <div className="sidebar-foot">
+        <button
+          type="button"
+          className="nav-item"
+          style={{ color: 'var(--ink-3)', background: 'none', border: 'none', width: '100%', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
+          onClick={() => openModal('help')}>
+          <span className="nav-icon">{I.help}</span>
+          <span className="nav-label"><span className="en">Help</span></span>
+        </button>
         <a href="/api/auth/logout" className="nav-item" style={{ color: 'var(--ink-3)' }}>
           <span className="nav-icon">{I.logout}</span>
           <span className="nav-label"><span className="en">Sign Out</span></span>

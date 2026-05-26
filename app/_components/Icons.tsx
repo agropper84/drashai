@@ -44,6 +44,7 @@ export const I = {
   rings:    svg(<><circle cx="9" cy="14" r="5"/><circle cx="15" cy="14" r="5"/><path d="M9 5l3 3 3-3"/></>),
   envelope: svg(<><rect x="3" y="6" width="18" height="14" rx="1"/><path d="M3 7l9 7 9-7"/></>),
   star:     svg(<polygon points="12 3 14.5 9 21 9.5 16 14 17.5 21 12 17.5 6.5 21 8 14 3 9.5 9.5 9"/>),
+  help:     svg(<><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></>),
 } as const;
 
 /**

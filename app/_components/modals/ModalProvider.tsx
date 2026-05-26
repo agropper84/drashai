@@ -17,8 +17,9 @@ import { NewFileModal } from './NewFileModal';
 import { RecordingModal } from './RecordingModal';
 import { SourceModal } from './SourceModal';
 import { DictationModal, DictationResult } from './DictationModal';
+import { HelpModal } from './HelpModal';
 
-type ModalKind = 'new' | 'record' | 'sources' | 'dictation';
+type ModalKind = 'new' | 'record' | 'sources' | 'dictation' | 'help';
 
 interface OpenOptions {
   /** When recording: which file (if any) the recording should append to. */
@@ -56,6 +57,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
       {active === 'new' && <NewFileModal onClose={close} />}
       {active === 'record' && <RecordingModal onClose={close} fileId={options?.fileId} />}
       {active === 'sources' && <SourceModal onClose={close} />}
+      {active === 'help' && <HelpModal onClose={close} />}
       {active === 'dictation' && (
         <DictationModal
           onClose={close}
