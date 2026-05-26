@@ -202,8 +202,8 @@ export default function ConversationTab() {
         </>
       )}
 
-      {(rawMode || utterances.length === 0 || (!hasSpeakers && utterances.length > 0)) && (
-        <div style={{ marginTop: utterances.length > 0 && !rawMode ? 32 : 0 }}>
+      {(rawMode || utterances.length === 0) && (
+        <div style={{ marginTop: rawMode ? 0 : 0 }}>
           {rawMode && (
             <button className="btn ghost small" onClick={() => { setRawMode(false); setUtterances(parseTranscript(transcriptDraft)); }} style={{ fontSize: 11, marginBottom: 8 }}>
               Back to formatted view

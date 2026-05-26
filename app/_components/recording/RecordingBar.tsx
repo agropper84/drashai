@@ -52,9 +52,10 @@ export function RecordingBar() {
 
       {!rec.paused && !ending && (
         <div className="recording-bar-waves">
-          <span style={{ animationDelay: '0s' }} /><span style={{ animationDelay: '0.15s' }} />
-          <span style={{ animationDelay: '0.3s' }} /><span style={{ animationDelay: '0.45s' }} />
-          <span style={{ animationDelay: '0.1s' }} />
+          {[0.6, 1.0, 0.7, 0.9, 0.5].map((scale, i) => {
+            const h = Math.max(3, rec.level * scale * 18);
+            return <span key={i} style={{ height: h }} />;
+          })}
         </div>
       )}
 
