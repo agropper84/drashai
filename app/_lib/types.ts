@@ -1,17 +1,13 @@
-// Plan 6 — Spark gets server-side timestamps.
-// Everything else identical to Plan 5.
+// Plan 9 — Encounter gains optional consentName + consentAt audit fields.
+// Moment already had label from Plan 2.
 
 export type FileTab = 'conversation' | 'documents' | 'sources' | 'insights' | 'draft' | 'final';
 export type CardView = 'detailed' | 'minimal';
 
-export interface EncounterSource {
-  ref: string; heRef?: string; he: string; en: string; note?: string; addedAt: string;
-}
+export interface EncounterSource { ref: string; heRef?: string; he: string; en: string; note?: string; addedAt: string; }
 export interface GeneratedContent { type: string; content: string; generatedAt: string; }
 export interface Moment { t: number; label?: string; createdAt: string; }
-export interface Task {
-  id: string; body: string; done: boolean; due?: string | null; createdAt: string;
-}
+export interface Task { id: string; body: string; done: boolean; due?: string | null; createdAt: string; }
 
 export interface Encounter {
   id: string;
@@ -36,6 +32,9 @@ export interface Encounter {
   generatedContent?: GeneratedContent[];
   moments?: Moment[];
   tasks?: Task[];
+  /** Plan 9 — typed by the rabbi during the vow phase, kept for audit. */
+  consentName?: string;
+  consentAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -43,16 +42,12 @@ export interface Encounter {
 export interface Spark {
   id: string;
   body: string;
-  /** A short label like 'Voice Note', 'Insight', 'Link'. Free-form. */
   tag?: string;
-  /** Coarse category — Plan 6 auto-assigns via /api/sparks/classify. */
   category?: string;
-  /** Display-friendly date. */
   when: string;
   url?: string;
-  /** When set, this spark is an insight scoped to a specific file. */
   fileId?: string;
-  /** Plan 9 — recording moment marker. */
+  /** Plan 9 — when set, this spark was created mid-recording at this elapsed time (seconds). */
   momentT?: number;
   createdAt: string;
   updatedAt: string;

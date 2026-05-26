@@ -82,6 +82,11 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
     if (updates.unarchive === true) { delete encounter.archivedAt; }
     // Plan 5: sealed flag (used by markDelivered)
     if (updates.sealed !== undefined) encounter.sealed = updates.sealed;
+    // Plan 9: moment markers
+    if (updates.addMoment) {
+      if (!encounter.moments) encounter.moments = [];
+      encounter.moments.push({ t: updates.addMoment.t, label: updates.addMoment.label || '', createdAt: new Date().toISOString() });
+    }
     encounter.updatedAt = new Date().toISOString();
 
     await redis.set(itemKey(session.userId, id), JSON.stringify(encounter));

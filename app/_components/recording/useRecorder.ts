@@ -1,27 +1,46 @@
 'use client';
-// MediaRecorder hook — extracted from the old App's recording state.
-// Reusable for: pastoral encounter recording, spark voice notes, future features.
-// Plan 9 builds the sticky-bar UI on top of this; the hook stays the same.
+// Plan 9 upgrade — exposes an audio-level signal (0..1) for the ethereal vis,
+// and a moments array for ⚑ markers.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+
+export interface RecordedMoment {
+  t: number;        // seconds since recording start
+  label?: string;
+  createdAt: string;
+}
 
 export interface Recorder {
   recording: boolean;
   paused: boolean;
-  time: number;                 // seconds since start (excluding pauses)
+  time: number;
+  /** 0..1 — smoothed RMS of the mic input. */
+  level: number;
+  /** Markers dropped during recording. */
+  moments: RecordedMoment[];
   start: () => Promise<boolean>;
   stop: () => Promise<Blob | null>;
   pause: () => void;
   resume: () => void;
+  /** Drop a marker at the current elapsed time. */
+  markMoment: (label?: string) => RecordedMoment;
+  /** Replace or annotate the last marker. */
+  updateMoment: (idx: number, patch: Partial<RecordedMoment>) => void;
 }
 
 export function useRecorder(): Recorder {
   const [recording, setRecording] = useState(false);
   const [paused, setPaused] = useState(false);
   const [time, setTime] = useState(0);
+  const [level, setLevel] = useState(0);
+  const [moments, setMoments] = useState<RecordedMoment[]>([]);
+
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const levelRafRef = useRef<number | null>(null);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -34,6 +53,36 @@ export function useRecorder(): Recorder {
     stopTimer();
     timerRef.current = setInterval(() => setTime((t) => t + 1), 1000);
   }, [stopTimer]);
+
+  const startLevelLoop = useCallback(() => {
+    const analyser = analyserRef.current;
+    if (!analyser) return;
+    const buf = new Uint8Array(analyser.fftSize);
+    let smoothed = 0;
+    const tick = () => {
+      analyser.getByteTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / buf.length);
+      // Smooth + scale (mic input rarely exceeds 0.3 RMS even when loud).
+      const next = Math.min(rms * 3, 1);
+      smoothed = smoothed * 0.8 + next * 0.2;
+      setLevel(smoothed);
+      levelRafRef.current = requestAnimationFrame(tick);
+    };
+    tick();
+  }, []);
+
+  const stopLevelLoop = useCallback(() => {
+    if (levelRafRef.current) {
+      cancelAnimationFrame(levelRafRef.current);
+      levelRafRef.current = null;
+    }
+    setLevel(0);
+  }, []);
 
   const start = useCallback(async () => {
     try {
@@ -48,7 +97,20 @@ export function useRecorder(): Recorder {
       };
       recorder.start(1000);
       recorderRef.current = recorder;
+
+      // Audio level analyzer
+      const AC = (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext);
+      const ctx = new AC();
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      source.connect(analyser);
+      audioCtxRef.current = ctx;
+      analyserRef.current = analyser;
+      startLevelLoop();
+
       setTime(0);
+      setMoments([]);
       setRecording(true);
       setPaused(false);
       startTimer();
@@ -57,10 +119,11 @@ export function useRecorder(): Recorder {
       console.error('[useRecorder] start failed:', err);
       return false;
     }
-  }, [startTimer]);
+  }, [startTimer, startLevelLoop]);
 
   const stop = useCallback(async () => {
     stopTimer();
+    stopLevelLoop();
     const recorder = recorderRef.current;
     if (!recorder) return null;
     return new Promise<Blob | null>((resolve) => {
@@ -72,10 +135,13 @@ export function useRecorder(): Recorder {
       recorder.stop();
       recorder.stream.getTracks().forEach((t) => t.stop());
       recorderRef.current = null;
+      try { audioCtxRef.current?.close(); } catch {}
+      audioCtxRef.current = null;
+      analyserRef.current = null;
       setRecording(false);
       setPaused(false);
     });
-  }, [stopTimer]);
+  }, [stopTimer, stopLevelLoop]);
 
   const pause = useCallback(() => {
     const r = recorderRef.current;
@@ -83,7 +149,8 @@ export function useRecorder(): Recorder {
     r.pause();
     setPaused(true);
     stopTimer();
-  }, [stopTimer]);
+    stopLevelLoop();
+  }, [stopTimer, stopLevelLoop]);
 
   const resume = useCallback(() => {
     const r = recorderRef.current;
@@ -91,11 +158,32 @@ export function useRecorder(): Recorder {
     r.resume();
     setPaused(false);
     startTimer();
-  }, [startTimer]);
+    startLevelLoop();
+  }, [startTimer, startLevelLoop]);
 
-  useEffect(() => () => stopTimer(), [stopTimer]);
+  const markMoment = useCallback((label?: string) => {
+    const m: RecordedMoment = {
+      t: time,
+      label,
+      createdAt: new Date().toISOString(),
+    };
+    setMoments((prev) => [...prev, m]);
+    return m;
+  }, [time]);
 
-  return { recording, paused, time, start, stop, pause, resume };
+  const updateMoment = useCallback((idx: number, patch: Partial<RecordedMoment>) => {
+    setMoments((prev) => prev.map((m, i) => (i === idx ? { ...m, ...patch } : m)));
+  }, []);
+
+  useEffect(() => () => {
+    stopTimer();
+    stopLevelLoop();
+  }, [stopTimer, stopLevelLoop]);
+
+  return {
+    recording, paused, time, level, moments,
+    start, stop, pause, resume, markMoment, updateMoment,
+  };
 }
 
 export function fmtTime(s: number): string {
