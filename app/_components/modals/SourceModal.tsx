@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { I } from '../Icons';
 import { api } from '@/app/_lib/api';
+import { MarkdownBody } from '../MarkdownBody';
 import type { LibraryResult } from '@/app/_lib/types';
 import { useEncounters } from '@/app/_lib/encounters-store';
 
@@ -195,9 +196,9 @@ export function SourceModal({ onClose }: { onClose: () => void }) {
               </button>
             </div>
             <div className="source-synthesis-body">
-              {synthesis ? synthesis.split('\n').map((line, i) => (
-                <p key={i}>{line}</p>
-              )) : (
+              {synthesis ? (
+                <MarkdownBody text={synthesis} />
+              ) : (
                 <span className="source-synthesis-loading">Synthesizing from {results.length} sources…</span>
               )}
             </div>

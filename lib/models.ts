@@ -21,6 +21,8 @@ export const TOKEN_PRESETS = [
 ] as const;
 
 export const MODELS = {
+  /** Most capable model for deep research, scholar synthesis */
+  OPUS: 'claude-opus-4-6',
   /** Primary model for complex generation (sermons, eulogies, synthesis) */
   SONNET: 'claude-sonnet-4-6',
   /** Fast model for classification, decomposition, lightweight tasks */

@@ -7,6 +7,7 @@ import { useRef, useState } from 'react';
 import { useEncounters } from '@/app/_lib/encounters-store';
 import { useSparks } from '@/app/_lib/sparks-store';
 import { api } from '@/app/_lib/api';
+import { MarkdownBody } from './MarkdownBody';
 import type { LibraryResult } from '@/app/_lib/types';
 
 type Phase = 'idle' | 'searching' | 'synthesizing' | 'done';
@@ -181,9 +182,7 @@ export function ScholarPanel() {
           {answer && (
             <div className="scholar-answer">
               <div className="scholar-answer-text">
-                {answer.split('\n').map((line, i) => (
-                  line.trim() ? <p key={i}>{line}</p> : null
-                ))}
+                <MarkdownBody text={answer} />
               </div>
               <div className="scholar-answer-actions">
                 <button className="btn ghost small" onClick={handleCopy}>

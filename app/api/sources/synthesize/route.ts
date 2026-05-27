@@ -1,9 +1,10 @@
 // POST /api/sources/synthesize — Streaming synthesis of a comprehensive answer
-// from the provided sources. Uses Sonnet for scholarly quality.
+// from the provided sources. Uses Opus for scholarly depth and quality.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
-import { getClient, getUserAIConfig } from '@/lib/ai';
+import { getClient } from '@/lib/ai';
+import { MODELS } from '@/lib/models';
 
 export const maxDuration = 120;
 
@@ -26,15 +27,25 @@ export async function POST(req: NextRequest) {
 
   const systemPrompt = `You are a rabbinical scholar preparing a comprehensive, source-based answer to a question about Jewish law, theology, or practice.
 
+FORMAT your answer using Markdown:
+- Use ## for major section headings and ### for subsections
+- Use **bold** for key terms and source names
+- Use *italics* for Hebrew/Aramaic transliterations
+- Use > blockquotes for direct quotations from sources
+- Use numbered and bullet lists where appropriate
+- Use tables when comparing opinions or categories
+- Use --- horizontal rules between major sections
+
 Rules:
 - Use ONLY the provided sources — do not add outside knowledge or speculation
-- Cite every source inline using its reference (e.g., "As stated in Shabbat 156b...")
-- Organize the answer by theme, development of the law, or chronological layers (Torah → Talmud → later authorities)
+- Cite every source inline using its reference (e.g., "As stated in **Shabbat 156b**...")
+- Organize by theme, development of the law, or chronological layers (Torah → Talmud → later authorities)
 - Present different opinions where they exist, noting who holds each view
+- Include a comparison table when authorities disagree
 - Use a scholarly but accessible tone — a rabbi preparing for a shiur
-- Preserve Hebrew and Aramaic terms with brief translation in parentheses
-- If the sources don't fully answer the question, say so honestly rather than inventing
-- Use paragraph breaks for readability`;
+- Preserve Hebrew and Aramaic terms with brief translation in parentheses on first use
+- If the sources don't fully answer the question, say so honestly
+- Begin with a brief ## Summary (2-3 sentences)`;
 
   const userPrompt = `Question: ${question}
 
@@ -42,13 +53,13 @@ Sources to draw from (${sources.length} total):
 
 ${sourcesText}
 
-Write a thorough, well-organized answer based exclusively on these sources.`;
+Write a thorough, well-organized Markdown answer with section headings, inline citations, and comparison tables where applicable.`;
 
   try {
     const client = await getClient();
     const stream = client.messages.stream({
-      model: (await getUserAIConfig()).model,
-      max_tokens: (await getUserAIConfig()).maxTokens,
+      model: MODELS.OPUS,
+      max_tokens: 16384,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     });
