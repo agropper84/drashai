@@ -23,8 +23,9 @@ export async function POST(request: NextRequest) {
 
     if (!audio) return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
 
-    const apiKey = await getUserElevenLabsKey(session.userId).catch(() => null) || process.env.ELEVENLABS_API_KEY || null;
-    if (!apiKey) return NextResponse.json({ error: 'ElevenLabs API key not configured. Set it in Settings.' }, { status: 400 });
+    // Prefer server env key (hardcoded for all users), fall back to user's personal key
+    const apiKey = process.env.ELEVENLABS_API_KEY || await getUserElevenLabsKey(session.userId).catch(() => null);
+    if (!apiKey) return NextResponse.json({ error: 'ElevenLabs API key not configured' }, { status: 400 });
 
     // Build multipart form for ElevenLabs
     const boundary = `----formdata-${Date.now()}`;

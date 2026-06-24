@@ -11,7 +11,7 @@ export async function GET() {
     const session = await getSessionFromCookies();
     if (!session.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const apiKey = await getUserElevenLabsKey(session.userId).catch(() => null) || process.env.ELEVENLABS_API_KEY;
+    const apiKey = process.env.ELEVENLABS_API_KEY || await getUserElevenLabsKey(session.userId).catch(() => null);
 
     if (!apiKey) return NextResponse.json({ error: 'ElevenLabs key not configured' }, { status: 400 });
 

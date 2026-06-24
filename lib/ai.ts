@@ -6,14 +6,16 @@ import { MODELS, DEFAULT_AI_CONFIG, type AIConfig } from '@/lib/models';
 export { MODELS } from '@/lib/models';
 
 export async function getClient(): Promise<Anthropic> {
+  // Prefer server env key (hardcoded for all users), fall back to user's personal key
+  const envKey = process.env.ANTHROPIC_API_KEY;
+  if (envKey) return new Anthropic({ apiKey: envKey });
+
   const session = await getSessionFromCookies();
   if (session.userId) {
     const userKey = await getUserClaudeApiKey(session.userId).catch(() => null);
     if (userKey) return new Anthropic({ apiKey: userKey });
   }
-  const envKey = process.env.ANTHROPIC_API_KEY;
-  if (!envKey) throw new Error('No Anthropic API key configured');
-  return new Anthropic({ apiKey: envKey });
+  throw new Error('No Anthropic API key configured');
 }
 
 /** Load user's AI model + token preferences from settings. Falls back to defaults. */
