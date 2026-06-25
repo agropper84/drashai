@@ -12,7 +12,7 @@ export const CURATED_VOICES: StudyoVoice[] = [
   { id: 'ada', name: 'Ada', desc: 'Crisp and academic but approachable — asks sharp questions and knows when to push.', initials: 'Ad', color: '#B5746A', category: 'conversation', tags: ['Crisp', 'Academic', 'Sharp'], best: 'Podcast host (analytical)', custom: false },
   { id: 'theo', name: 'Theo', desc: 'Relaxed and thoughtful — the co-host who synthesizes and translates jargon into plain language.', initials: 'Th', color: '#9488B0', category: 'conversation', tags: ['Relaxed', 'Thoughtful', 'Accessible'], best: 'Podcast co-host', custom: false },
   // Character
-  { id: 'saoirse', name: 'Saoirse', desc: 'Irish lilt, warm and rhythmic — turns any explanation into a story you'd overhear in a pub.', initials: 'Sa', color: '#8FA37C', category: 'character', tags: ['Irish', 'Warm', 'Storyteller'], best: 'Narrative & history', custom: false },
+  { id: 'saoirse', name: 'Saoirse', desc: "Irish lilt, warm and rhythmic — turns any explanation into a story you'd overhear in a pub.", initials: 'Sa', color: '#8FA37C', category: 'character', tags: ['Irish', 'Warm', 'Storyteller'], best: 'Narrative & history', custom: false },
   { id: 'wren', name: 'Wren', desc: 'Intimate, close-mic storyteller — as if someone is reading aloud just to you.', initials: 'Wr', color: '#C97D7D', category: 'character', tags: ['Intimate', 'Close-mic', 'Personal'], best: 'Bedtime-study narration', custom: false },
   { id: 'nova', name: 'Nova', desc: 'Energetic and punchy — packs information tight and keeps the pace high without sacrificing clarity.', initials: 'No', color: '#D49A5A', category: 'character', tags: ['Energetic', 'Punchy', 'Fast-paced'], best: 'Exam prep & quick reviews', custom: false },
 ];
