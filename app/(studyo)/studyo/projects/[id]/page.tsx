@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { studyoApi } from '@/app/(studyo)/_lib/studyo-api';
 import { getVoice } from '@/app/(studyo)/_lib/studyo-voices';
+import { InstructionModal } from '@/app/(studyo)/_components/InstructionModal';
 import type { StudyoProject, StudyoMaterial, StudyoInstruction, StudyoOutput } from '@/app/(studyo)/_lib/studyo-types';
 
 const BADGE_COLORS: Record<string, string> = {
@@ -30,6 +31,9 @@ export default function ProjectDetailPage() {
   const [editingDesc, setEditingDesc] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [descDraft, setDescDraft] = useState('');
+  const [showInstrModal, setShowInstrModal] = useState(false);
+  const [editingInstr, setEditingInstr] = useState<StudyoInstruction | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     studyoApi.projects.get(id).then(({ project }) => {
@@ -61,6 +65,28 @@ export default function ProjectDetailPage() {
     const { project: p } = await studyoApi.projects.update(id, { desc: descDraft.trim() });
     setProject(p);
     setEditingDesc(false);
+  };
+
+  const saveInstruction = async (instr: StudyoInstruction) => {
+    const existing = project.instructions.findIndex(i => i.id === instr.id);
+    const updated = existing >= 0
+      ? project.instructions.map((i, idx) => idx === existing ? instr : i)
+      : [...project.instructions, instr];
+    const { project: p } = await studyoApi.projects.update(id, { instructions: updated });
+    setProject(p);
+    setShowInstrModal(false);
+    setEditingInstr(null);
+  };
+
+  const deleteInstruction = async (instrId: string) => {
+    const updated = project.instructions.filter(i => i.id !== instrId);
+    const { project: p } = await studyoApi.projects.update(id, { instructions: updated });
+    setProject(p);
+  };
+
+  const handleDeleteProject = async () => {
+    await studyoApi.projects.remove(id);
+    router.push('/studyo');
   };
 
   return (
@@ -124,12 +150,26 @@ export default function ProjectDetailPage() {
             )}
           </div>
         </div>
-        <Link
-          href={`/studyo/projects/${id}/configure`}
-          style={{ background: '#D49A5A', color: '#15181E', borderRadius: 11, padding: '13px 22px', fontWeight: 700, fontSize: 14.5, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
-        >
-          ✦ New audio file
-        </Link>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <Link
+            href={`/studyo/projects/${id}/configure`}
+            style={{ background: '#D49A5A', color: '#15181E', borderRadius: 11, padding: '13px 22px', fontWeight: 700, fontSize: 14.5, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            ✦ New audio file
+          </Link>
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{ background: 'none', border: '1px solid #2e3540', borderRadius: 10, padding: '12px', cursor: 'pointer', color: '#6d7383', fontSize: 14 }}
+              title="Delete project"
+            >✕</button>
+          ) : (
+            <button
+              onClick={handleDeleteProject}
+              style={{ background: '#C97D7D', color: '#15181E', border: 'none', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'inherit' }}
+            >Delete project</button>
+          )}
+        </div>
       </div>
 
       {/* Section A: Reference Material */}
@@ -164,11 +204,11 @@ export default function ProjectDetailPage() {
       {/* Section B: Output Instructions */}
       <div className="sy-section-head">
         <div className="sy-eyebrow">Output instructions</div>
-        <button className="sy-section-action">+ Create instruction</button>
+        <button className="sy-section-action" onClick={() => { setEditingInstr(null); setShowInstrModal(true); }}>+ Create instruction</button>
       </div>
 
       {project.instructions.length === 0 ? (
-        <div className="sy-empty-card" style={{ marginBottom: 30 }}>
+        <div className="sy-empty-card" style={{ marginBottom: 30 }} onClick={() => { setEditingInstr(null); setShowInstrModal(true); }}>
           Save a reusable recipe — format, length, voices, and how you want it taught.
         </div>
       ) : (
@@ -192,8 +232,9 @@ export default function ProjectDetailPage() {
                 </div>
                 <div className="sy-instr-note">{i.note || 'No custom instructions'}</div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-                  <button className="sy-instr-use">Use →</button>
-                  <button className="sy-instr-edit">Edit</button>
+                  <Link href={`/studyo/projects/${id}/configure?instr=${i.id}`} className="sy-instr-use" style={{ textDecoration: 'none' }}>Use →</Link>
+                  <button className="sy-instr-edit" onClick={() => { setEditingInstr(i); setShowInstrModal(true); }}>Edit</button>
+                  <button className="sy-instr-edit" style={{ color: '#C97D7D', padding: '9px 10px' }} onClick={() => deleteInstruction(i.id)} title="Delete">✕</button>
                 </div>
               </div>
             );
@@ -229,6 +270,15 @@ export default function ProjectDetailPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Instruction Builder Modal */}
+      {showInstrModal && (
+        <InstructionModal
+          onClose={() => { setShowInstrModal(false); setEditingInstr(null); }}
+          onSave={saveInstruction}
+          editing={editingInstr}
+        />
       )}
     </>
   );

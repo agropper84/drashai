@@ -1,10 +1,10 @@
 'use client';
-// Screen 3: Import material — placeholder for Phase 2 build.
+// Screen 3: Import material — paste text, upload document, audio/video, or add link.
+// File uploads go to Google Drive via the materials API.
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { studyoApi } from '@/app/(studyo)/_lib/studyo-api';
-import type { StudyoMaterial } from '@/app/(studyo)/_lib/studyo-types';
 
 type SourceType = 'paste' | 'upload' | 'av' | 'link';
 
@@ -15,6 +15,9 @@ export default function ImportPage() {
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
   const [saving, setSaving] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const chips: { type: SourceType; label: string }[] = [
     { type: 'paste', label: 'Paste text' },
@@ -23,30 +26,48 @@ export default function ImportPage() {
     { type: 'link', label: 'Add a link' },
   ];
 
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files[0];
+    if (f) { setFile(f); setTitle(f.name.replace(/\.[^.]+$/, '')); }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) { setFile(f); setTitle(f.name.replace(/\.[^.]+$/, '')); }
+  };
+
   const handleAdd = async () => {
-    if (!content.trim()) return;
     setSaving(true);
     try {
-      const { project } = await studyoApi.projects.get(id);
-      const material: StudyoMaterial = {
-        id: crypto.randomUUID(),
-        type: source === 'paste' ? 'text' : source === 'link' ? 'link' : source === 'av' ? 'media' : 'pdf',
-        title: title.trim() || (source === 'paste' ? 'Pasted text' : source === 'link' ? content.trim() : 'Uploaded file'),
-        meta: source === 'paste' ? `Pasted · ${content.split(/\s+/).length.toLocaleString()} words` : source === 'link' ? content.trim() : 'Just added',
-        extractedText: source === 'paste' ? content : undefined,
-        sourceUrl: source === 'link' ? content.trim() : undefined,
-      };
-      await studyoApi.projects.update(id, {
-        material: [...project.material, material],
-      });
+      if (source === 'paste') {
+        if (!content.trim()) return;
+        await studyoApi.materials.addText(id, content, title.trim() || undefined);
+      } else if (source === 'link') {
+        if (!content.trim()) return;
+        await studyoApi.materials.addLink(id, content.trim(), title.trim() || undefined);
+      } else if (file) {
+        const type = source === 'av' ? 'media' : 'pdf';
+        await studyoApi.materials.addFile(id, file, type, title.trim() || undefined);
+      }
       router.push(`/studyo/projects/${id}`);
     } finally {
       setSaving(false);
     }
   };
 
+  const canSubmit = source === 'paste' || source === 'link' ? content.trim().length > 0 : !!file;
+
   return (
     <div style={{ maxWidth: 780 }}>
+      <button
+        onClick={() => router.push(`/studyo/projects/${id}`)}
+        style={{ fontSize: 13, color: '#8b91a0', cursor: 'pointer', marginBottom: 18, background: 'none', border: 'none', fontFamily: 'inherit', padding: 0 }}
+      >
+        ← Back to project
+      </button>
+
       <div className="sy-eyebrow" style={{ marginBottom: 8 }}>Reference material</div>
       <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-.02em', marginBottom: 24 }}>
         Add reference material
@@ -56,7 +77,7 @@ export default function ImportPage() {
         {chips.map(c => (
           <button
             key={c.type}
-            onClick={() => setSource(c.type)}
+            onClick={() => { setSource(c.type); setFile(null); setContent(''); }}
             style={{
               padding: '11px 18px', borderRadius: 11, fontSize: 14, fontWeight: 600,
               cursor: 'pointer', fontFamily: 'inherit', border: '1px solid',
@@ -73,67 +94,115 @@ export default function ImportPage() {
       {source === 'paste' && (
         <>
           <input
+            className="sy-input"
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder="Title (optional)"
-            style={{
-              width: '100%', background: '#1B1F27', border: '1px solid #262C36',
-              borderRadius: 10, padding: '12px 16px', color: '#E4E6EA',
-              fontSize: 14, outline: 'none', fontFamily: 'inherit', marginBottom: 10,
-            }}
+            style={{ marginBottom: 10 }}
           />
           <textarea
+            className="sy-textarea"
             value={content}
             onChange={e => setContent(e.target.value)}
             placeholder="Paste your chapter, paper, article, or notes here..."
-            style={{
-              width: '100%', height: 300, resize: 'none',
-              background: '#1B1F27', border: '1px solid #262C36',
-              borderRadius: 14, padding: 20, color: '#E4E6EA',
-              fontSize: 15.5, lineHeight: 1.6, outline: 'none', fontFamily: 'inherit',
-            }}
+            rows={12}
+            style={{ height: 300 }}
           />
         </>
       )}
 
       {source === 'link' && (
-        <input
-          value={content}
-          onChange={e => setContent(e.target.value)}
-          placeholder="https://arxiv.org/abs/1706.03762"
-          style={{
-            width: '100%', background: '#1B1F27', border: '1px solid #262C36',
-            borderRadius: 10, padding: '14px 16px', color: '#E4E6EA',
-            fontSize: 15, outline: 'none', fontFamily: 'inherit',
-          }}
-        />
+        <>
+          <input
+            className="sy-input"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Title (optional)"
+            style={{ marginBottom: 10 }}
+          />
+          <input
+            className="sy-input"
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            placeholder="https://arxiv.org/abs/1706.03762"
+          />
+          <div style={{ fontSize: 12, color: '#6d7383', marginTop: 8 }}>
+            We'll fetch the page and pull out the readable content.
+          </div>
+        </>
       )}
 
       {(source === 'upload' || source === 'av') && (
-        <div className="sy-empty-card" style={{ height: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-          <div style={{ fontSize: 40, color: '#D49A5A' }}>↑</div>
-          <div style={{ fontSize: 17, fontWeight: 600 }}>
-            {source === 'upload' ? 'Drop a PDF, EPUB, or document' : 'Drop an audio or video file'}
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={source === 'upload' ? '.pdf,.epub,.doc,.docx,.txt' : 'audio/*,video/*,.mp3,.wav,.m4a,.mp4,.mov,.webm'}
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+          />
+          <div
+            className="sy-empty-card"
+            style={{
+              height: 300, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 14,
+              borderColor: dragOver ? '#D49A5A' : undefined,
+              background: dragOver ? '#221d14' : undefined,
+            }}
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleFileDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {file ? (
+              <>
+                <div style={{ fontSize: 17, fontWeight: 600, color: '#E4E6EA' }}>{file.name}</div>
+                <div style={{ fontSize: 13, color: '#8b91a0' }}>
+                  {(file.size / 1024 / 1024).toFixed(1)} MB · Click or drop to replace
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 40, color: '#D49A5A' }}>↑</div>
+                <div style={{ fontSize: 17, fontWeight: 600 }}>
+                  {source === 'upload' ? 'Drop a PDF, EPUB, or document' : 'Drop an audio or video file'}
+                </div>
+                <div style={{ fontSize: 13, color: '#8b91a0', maxWidth: 360, lineHeight: 1.5, textAlign: 'center' }}>
+                  {source === 'upload'
+                    ? "We'll extract the text, keep the chapters, and skip the page furniture. Up to 200 pages."
+                    : "A lecture recording, a podcast episode, a YouTube download — we'll transcribe the speech. MP3, WAV, M4A, MP4, or MOV."
+                  }
+                </div>
+                <button
+                  style={{
+                    marginTop: 8, background: 'transparent', border: '1px solid #2e3540',
+                    borderRadius: 10, padding: '9px 18px', color: '#aab0bd',
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  Choose a file
+                </button>
+              </>
+            )}
           </div>
-          <div style={{ fontSize: 13, color: '#8b91a0', maxWidth: 360, lineHeight: 1.5 }}>
-            {source === 'upload'
-              ? "We'll extract the text, keep the chapters, and skip the page furniture."
-              : "We'll transcribe the speech and use it as your source."
-            }
-          </div>
-        </div>
+          {file && (
+            <input
+              className="sy-input"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Title (optional — defaults to filename)"
+              style={{ marginTop: 10 }}
+            />
+          )}
+        </>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
         <button
+          className="sy-btn-primary"
           onClick={handleAdd}
-          disabled={saving || !content.trim()}
-          style={{
-            background: '#D49A5A', color: '#15181E', borderRadius: 11,
-            padding: '12px 24px', fontWeight: 700, fontSize: 14,
-            cursor: 'pointer', border: 'none', fontFamily: 'inherit',
-            opacity: saving || !content.trim() ? 0.5 : 1,
-          }}
+          disabled={saving || !canSubmit}
+          style={{ fontSize: 14, padding: '12px 24px' }}
         >
           {saving ? 'Adding...' : 'Add to project →'}
         </button>
