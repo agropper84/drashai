@@ -49,6 +49,7 @@ export default function ProjectDetailPage() {
   const [addUrl, setAddUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [sizeError, setSizeError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -82,8 +83,6 @@ export default function ProjectDetailPage() {
     setProject(p);
     setEditingDesc(false);
   };
-
-  const [sizeError, setSizeError] = useState('');
 
   const handleFileUpload = async (file: File) => {
     if (file.size > MAX_FILE_MB * 1024 * 1024) {
