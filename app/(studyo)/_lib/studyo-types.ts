@@ -1,5 +1,14 @@
 // Studyo data model — matches DATA_MODEL.md exactly.
 
+export interface ProjectMemory {
+  id: string;
+  content: string;
+  source: 'auto' | 'user';
+  /** Which output generated this memory (auto only) */
+  outputId?: string;
+  createdAt: string;
+}
+
 export interface StudyoProject {
   id: string;
   title: string;
@@ -9,6 +18,7 @@ export interface StudyoProject {
   material: StudyoMaterial[];
   instructions: StudyoInstruction[];
   outputs: StudyoOutput[];
+  memory?: ProjectMemory[];
 }
 
 export interface StudyoMaterial {

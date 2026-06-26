@@ -11,7 +11,7 @@ import { studyoApi } from '@/app/(studyo)/_lib/studyo-api';
 import { getVoice } from '@/app/(studyo)/_lib/studyo-voices';
 import { InstructionModal } from '@/app/(studyo)/_components/InstructionModal';
 import { Icon, Sparkle } from '@/app/(studyo)/_components/StudyoIcons';
-import type { StudyoProject, StudyoInstruction, StudyoMaterial } from '@/app/(studyo)/_lib/studyo-types';
+import type { StudyoProject, StudyoInstruction, StudyoMaterial, ProjectMemory } from '@/app/(studyo)/_lib/studyo-types';
 
 const BADGE_COLORS: Record<string, string> = {
   pdf: '#C97D7D', text: '#8FA37C', link: '#6E8BA8', media: '#D49A5A',
@@ -69,6 +69,12 @@ export default function ProjectDetailPage() {
   const [sizeError, setSizeError] = useState('');
   const docInputRef = useRef<HTMLInputElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
+
+  // Memory
+  const [addingMemory, setAddingMemory] = useState(false);
+  const [memoryDraft, setMemoryDraft] = useState('');
+  const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null);
+  const [editingMemoryText, setEditingMemoryText] = useState('');
 
   useEffect(() => {
     studyoApi.projects.get(id).then(({ project }) => {
@@ -142,6 +148,42 @@ export default function ProjectDetailPage() {
     studyoApi.projects.update(id, { instructions: updated }).then(({ project: p }) => setProject(p)).catch(() => {});
     showToast(`Deleted instruction “${instr.name}”`, () => {
       studyoApi.projects.update(id, { instructions: prev }).then(({ project: p }) => setProject(p)).catch(() => {});
+    });
+  };
+
+  // --- Memory ---
+  const memories = project.memory || [];
+
+  const addMemory = async () => {
+    if (!memoryDraft.trim()) return;
+    const mem: ProjectMemory = {
+      id: crypto.randomUUID(),
+      content: memoryDraft.trim(),
+      source: 'user',
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [...memories, mem];
+    const { project: p } = await studyoApi.projects.update(id, { memory: updated } as any);
+    setProject(p);
+    setMemoryDraft('');
+    setAddingMemory(false);
+  };
+
+  const updateMemory = async (memId: string) => {
+    if (!editingMemoryText.trim()) return;
+    const updated = memories.map(m => m.id === memId ? { ...m, content: editingMemoryText.trim() } : m);
+    const { project: p } = await studyoApi.projects.update(id, { memory: updated } as any);
+    setProject(p);
+    setEditingMemoryId(null);
+  };
+
+  const removeMemory = (mem: ProjectMemory) => {
+    const prev = memories;
+    const updated = prev.filter(m => m.id !== mem.id);
+    setProject({ ...project, memory: updated });
+    studyoApi.projects.update(id, { memory: updated } as any).then(({ project: p }) => setProject(p)).catch(() => {});
+    showToast('Memory removed', () => {
+      studyoApi.projects.update(id, { memory: prev } as any).then(({ project: p }) => setProject(p)).catch(() => {});
     });
   };
 
@@ -484,6 +526,90 @@ export default function ProjectDetailPage() {
           })}
         </div>
       )}
+
+      {/* Section E: Project Memory */}
+      <div className="sy-section-head" style={{ marginTop: 30 }}>
+        <div className="sy-eyebrow">Project memory</div>
+        <div style={{ fontSize: 11, color: '#6d7383' }}>
+          {memories.length} item{memories.length !== 1 ? 's' : ''}
+        </div>
+      </div>
+
+      <div className="sy-ref-panel" style={{ marginBottom: 30 }}>
+        {memories.length > 0 && (
+          <div style={{ padding: 0 }}>
+            {memories.map(mem => (
+              <div key={mem.id} className="sy-memory-item">
+                <div className="sy-memory-badge" style={{ background: mem.source === 'auto' ? '#D49A5A' : '#6E8BA8' }}>
+                  {mem.source === 'auto' ? 'AI' : 'You'}
+                </div>
+                <div className="sy-memory-body">
+                  {editingMemoryId === mem.id ? (
+                    <div>
+                      <textarea
+                        className="sy-textarea sy-input-dark"
+                        value={editingMemoryText}
+                        onChange={e => setEditingMemoryText(e.target.value)}
+                        rows={2}
+                        autoFocus
+                        style={{ fontSize: 13 }}
+                      />
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 6 }}>
+                        <button className="sy-ref-cancel" onClick={() => setEditingMemoryId(null)}>Cancel</button>
+                        <button className="sy-btn-primary" style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => updateMemory(mem.id)}>Save</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="sy-memory-text">{mem.content}</div>
+                  )}
+                  {mem.outputId && (
+                    <div className="sy-memory-source">From generated output</div>
+                  )}
+                </div>
+                {editingMemoryId !== mem.id && (
+                  <div className="sy-memory-actions">
+                    <button
+                      className="sy-instr-pill-edit"
+                      onClick={() => { setEditingMemoryId(mem.id); setEditingMemoryText(mem.content); }}
+                      title="Edit"
+                    >
+                      <Icon name="edit" size={12} />
+                    </button>
+                    <button className="sy-ref-pill-x" onClick={() => removeMemory(mem)} title="Remove">×</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {addingMemory ? (
+          <div className="sy-ref-input-area">
+            <textarea
+              className="sy-textarea sy-input-dark"
+              value={memoryDraft}
+              onChange={e => setMemoryDraft(e.target.value)}
+              placeholder="e.g. The student prefers visual analogies. Focus on clinical applications. Avoid heavy math..."
+              rows={3}
+              autoFocus
+              style={{ fontSize: 13 }}
+            />
+            <div className="sy-ref-input-actions">
+              <button className="sy-ref-cancel" onClick={() => { setAddingMemory(false); setMemoryDraft(''); }}>Cancel</button>
+              <button className="sy-btn-primary" style={{ padding: '6px 16px', fontSize: 12 }} onClick={addMemory} disabled={!memoryDraft.trim()}>Add</button>
+            </div>
+          </div>
+        ) : (
+          <div className="sy-ref-toolbar">
+            <button className="sy-ref-tool" onClick={() => setAddingMemory(true)}>
+              <Icon name="plus" size={14} /> Add memory
+            </button>
+            {memories.length === 0 && (
+              <span className="sy-ref-hint">Claude learns preferences, style, and context across generations</span>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Instruction Builder Modal */}
       {showInstrModal && (
