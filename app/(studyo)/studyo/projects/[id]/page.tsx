@@ -15,6 +15,13 @@ const BADGE_COLORS: Record<string, string> = {
 const BADGE_LABELS: Record<string, string> = {
   pdf: 'PDF', text: 'TXT', link: 'URL', media: 'A/V',
 };
+const BADGE_ICONS: Record<string, string> = {
+  pdf: '📄', text: '✎', link: '🔗', media: '🎙',
+};
+
+// Max ~500KB text per material (Claude Opus context is ~200K tokens ≈ 680KB)
+const MAX_TEXT_BYTES = 500_000;
+const MAX_FILE_MB = 50;
 const LENGTH_LABELS: Record<string, string> = {
   quick: '~5 min', standard: '~15 min', deep: '~30 min+',
 };
@@ -76,7 +83,15 @@ export default function ProjectDetailPage() {
     setEditingDesc(false);
   };
 
+  const [sizeError, setSizeError] = useState('');
+
   const handleFileUpload = async (file: File) => {
+    if (file.size > MAX_FILE_MB * 1024 * 1024) {
+      setSizeError(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${MAX_FILE_MB} MB.`);
+      setTimeout(() => setSizeError(''), 4000);
+      return;
+    }
+    setSizeError('');
     setUploading(true);
     try {
       const isMedia = /\.(mp3|wav|m4a|mp4|mov|webm|ogg)$/i.test(file.name);
@@ -95,6 +110,12 @@ export default function ProjectDetailPage() {
 
   const handlePasteAdd = async () => {
     if (!addText.trim()) return;
+    if (new Blob([addText]).size > MAX_TEXT_BYTES) {
+      setSizeError(`Text too long (${(new Blob([addText]).size / 1024).toFixed(0)} KB). Maximum is ${MAX_TEXT_BYTES / 1000} KB per source. Split into multiple materials.`);
+      setTimeout(() => setSizeError(''), 4000);
+      return;
+    }
+    setSizeError('');
     setUploading(true);
     try {
       const { project: p } = await studyoApi.materials.addText(id, addText, addTitle.trim() || undefined);
@@ -233,22 +254,28 @@ export default function ProjectDetailPage() {
         style={{ display: 'none' }}
       />
 
-      {/* Material list */}
+      {/* Material tiles */}
       {project.material.length > 0 && (
-        <div className="sy-material-list" style={{ marginBottom: 12 }}>
+        <div className="sy-material-tiles" style={{ marginBottom: 12 }}>
           {project.material.map(m => (
-            <div key={m.id} className="sy-material-row">
-              <div className="sy-material-badge" style={{ background: BADGE_COLORS[m.type] || '#8b91a0' }}>
-                {BADGE_LABELS[m.type] || m.type.toUpperCase()}
+            <div key={m.id} className="sy-material-tile">
+              <button
+                className="sy-material-tile-remove"
+                onClick={() => removeMaterial(m.id)}
+                title="Remove"
+              >✕</button>
+              <div className="sy-material-tile-icon" style={{ background: BADGE_COLORS[m.type] || '#8b91a0' }}>
+                {BADGE_LABELS[m.type]}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="sy-material-title">{m.title}</div>
-                <div className="sy-material-meta">{m.meta}</div>
-              </div>
-              <button className="sy-material-remove" onClick={() => removeMaterial(m.id)}>✕</button>
+              <div className="sy-material-tile-title">{m.title}</div>
+              <div className="sy-material-tile-meta">{m.meta}</div>
             </div>
           ))}
         </div>
+      )}
+
+      {sizeError && (
+        <div style={{ color: '#C97D7D', fontSize: 12, marginBottom: 8, padding: '0 4px' }}>{sizeError}</div>
       )}
 
       {/* Inline add area */}
