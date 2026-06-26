@@ -7,7 +7,7 @@ import { StudyoProvider } from '../_lib/studyo-store';
 export function StudyoShell({ userName, children }: { userName: string; children: ReactNode }) {
   return (
     <StudyoProvider>
-      <div className="sy-app" data-app="studyo">
+      <div className="sy-app studyo-root" data-app="studyo">
         <StudyoSidebar userName={userName} />
         <main className="sy-main">
           <div className="sy-main-scroll">{children}</div>

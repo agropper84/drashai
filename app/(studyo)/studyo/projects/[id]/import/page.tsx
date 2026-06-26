@@ -1,12 +1,21 @@
 'use client';
 // Screen 3: Import material — paste text, upload document, audio/video, or add link.
-// File uploads go to Google Drive via the materials API.
+// The "full importer" (reachable from the project page's "More options →").
+// UI/UX pass: consistent SVG iconography across chips + dropzone (#1, #9).
 
 import { useParams, useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { studyoApi } from '@/app/(studyo)/_lib/studyo-api';
+import { Icon } from '@/app/(studyo)/_components/StudyoIcons';
 
 type SourceType = 'paste' | 'upload' | 'av' | 'link';
+
+const CHIPS: { type: SourceType; label: string; icon: string }[] = [
+  { type: 'paste', label: 'Paste text', icon: 'paste' },
+  { type: 'upload', label: 'Upload document', icon: 'pdf' },
+  { type: 'av', label: 'Audio or video', icon: 'media' },
+  { type: 'link', label: 'Add a link', icon: 'link' },
+];
 
 export default function ImportPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,13 +27,6 @@ export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const chips: { type: SourceType; label: string }[] = [
-    { type: 'paste', label: 'Paste text' },
-    { type: 'upload', label: 'Upload document' },
-    { type: 'av', label: 'Audio or video' },
-    { type: 'link', label: 'Add a link' },
-  ];
 
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -63,72 +65,50 @@ export default function ImportPage() {
     <div style={{ maxWidth: 780 }}>
       <button
         onClick={() => router.push(`/studyo/projects/${id}`)}
-        style={{ fontSize: 13, color: '#8b91a0', cursor: 'pointer', marginBottom: 18, background: 'none', border: 'none', fontFamily: 'inherit', padding: 0 }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#8b91a0', cursor: 'pointer', marginBottom: 18, background: 'none', border: 'none', fontFamily: 'inherit', padding: 0 }}
       >
-        ← Back to project
+        <Icon name="back" size={15} /> Back to project
       </button>
 
       <div className="sy-eyebrow" style={{ marginBottom: 8 }}>Reference material</div>
-      <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-.02em', marginBottom: 24 }}>
-        Add reference material
-      </div>
+      <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-.02em', marginBottom: 24 }}>Add reference material</div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {chips.map(c => (
-          <button
-            key={c.type}
-            onClick={() => { setSource(c.type); setFile(null); setContent(''); }}
-            style={{
-              padding: '11px 18px', borderRadius: 11, fontSize: 14, fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit', border: '1px solid',
-              borderColor: source === c.type ? '#D49A5A' : '#262C36',
-              background: source === c.type ? '#221d14' : '#1B1F27',
-              color: source === c.type ? '#D49A5A' : '#aab0bd',
-            }}
-          >
-            {c.label}
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {CHIPS.map(c => {
+          const active = source === c.type;
+          return (
+            <button
+              key={c.type}
+              onClick={() => { setSource(c.type); setFile(null); setContent(''); }}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '11px 16px', borderRadius: 11, fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit', border: '1px solid',
+                borderColor: active ? '#D49A5A' : '#262C36',
+                background: active ? '#221d14' : '#1B1F27',
+                color: active ? '#D49A5A' : '#aab0bd',
+              }}
+            >
+              <Icon name={c.icon} size={16} stroke={active ? '#D49A5A' : '#8b91a0'} />
+              {c.label}
+            </button>
+          );
+        })}
       </div>
 
       {source === 'paste' && (
         <>
-          <input
-            className="sy-input"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Title (optional)"
-            style={{ marginBottom: 10 }}
-          />
-          <textarea
-            className="sy-textarea"
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            placeholder="Paste your chapter, paper, article, or notes here..."
-            rows={12}
-            style={{ height: 300 }}
-          />
+          <input className="sy-input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Title (optional)" style={{ marginBottom: 10 }} />
+          <textarea className="sy-textarea" value={content} onChange={e => setContent(e.target.value)}
+            placeholder="Paste your chapter, paper, article, or notes here…" rows={12} style={{ height: 300 }} />
         </>
       )}
 
       {source === 'link' && (
         <>
-          <input
-            className="sy-input"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Title (optional)"
-            style={{ marginBottom: 10 }}
-          />
-          <input
-            className="sy-input"
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            placeholder="https://arxiv.org/abs/1706.03762"
-          />
-          <div style={{ fontSize: 12, color: '#6d7383', marginTop: 8 }}>
-            We'll fetch the page and pull out the readable content.
-          </div>
+          <input className="sy-input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Title (optional)" style={{ marginBottom: 10 }} />
+          <input className="sy-input" value={content} onChange={e => setContent(e.target.value)} placeholder="https://arxiv.org/abs/1706.03762" />
+          <div style={{ fontSize: 12, color: '#6d7383', marginTop: 8 }}>We&apos;ll fetch the page and pull out the readable content.</div>
         </>
       )}
 
@@ -156,55 +136,43 @@ export default function ImportPage() {
           >
             {file ? (
               <>
+                <Icon name={source === 'av' ? 'media' : 'pdf'} size={36} stroke="#D49A5A" />
                 <div style={{ fontSize: 17, fontWeight: 600, color: '#E4E6EA' }}>{file.name}</div>
-                <div style={{ fontSize: 13, color: '#8b91a0' }}>
-                  {(file.size / 1024 / 1024).toFixed(1)} MB · Click or drop to replace
-                </div>
+                <div style={{ fontSize: 13, color: '#8b91a0' }}>{(file.size / 1024 / 1024).toFixed(1)} MB · Click or drop to replace</div>
               </>
             ) : (
               <>
-                <div style={{ fontSize: 40, color: '#D49A5A' }}>↑</div>
+                <Icon name={source === 'av' ? 'media' : 'upload'} size={38} stroke="#D49A5A" />
                 <div style={{ fontSize: 17, fontWeight: 600 }}>
                   {source === 'upload' ? 'Drop a PDF, EPUB, or document' : 'Drop an audio or video file'}
                 </div>
                 <div style={{ fontSize: 13, color: '#8b91a0', maxWidth: 360, lineHeight: 1.5, textAlign: 'center' }}>
                   {source === 'upload'
                     ? "We'll extract the text, keep the chapters, and skip the page furniture. Up to 200 pages."
-                    : "A lecture recording, a podcast episode, a YouTube download — we'll transcribe the speech. MP3, WAV, M4A, MP4, or MOV."
-                  }
+                    : "A lecture recording, a podcast episode, a YouTube download — we'll transcribe the speech. MP3, WAV, M4A, MP4, or MOV."}
                 </div>
-                <button
+                <span
                   style={{
                     marginTop: 8, background: 'transparent', border: '1px solid #2e3540',
                     borderRadius: 10, padding: '9px 18px', color: '#aab0bd',
-                    fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    fontSize: 13, fontWeight: 600,
                   }}
                 >
                   Choose a file
-                </button>
+                </span>
               </>
             )}
           </div>
           {file && (
-            <input
-              className="sy-input"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="Title (optional — defaults to filename)"
-              style={{ marginTop: 10 }}
-            />
+            <input className="sy-input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Title (optional — defaults to filename)" style={{ marginTop: 10 }} />
           )}
         </>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-        <button
-          className="sy-btn-primary"
-          onClick={handleAdd}
-          disabled={saving || !canSubmit}
-          style={{ fontSize: 14, padding: '12px 24px' }}
-        >
-          {saving ? 'Adding...' : 'Add to project →'}
+        <button className="sy-btn-primary" onClick={handleAdd} disabled={saving || !canSubmit}
+          style={{ fontSize: 14, padding: '12px 24px', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          {saving ? 'Adding…' : <>Add to project <Icon name="back" size={14} stroke="#15181E" style={{ transform: 'rotate(180deg)' }} /></>}
         </button>
       </div>
     </div>

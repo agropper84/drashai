@@ -1,0 +1,40 @@
+/*
+  Studyo UI/UX enhancements — focus states & reduced-motion.
+  Addresses review item #11 (accessibility) without touching globals.css.
+
+  HOW TO ENABLE (one line):
+    In app/(studyo)/studyo/layout.tsx add at the top:
+      import '../studyo-enhancements.css';
+    …and add className="studyo-root" to the layout's outermost element
+    (so these rules stay scoped to Studyo and don't leak into the rest of the app).
+*/
+
+/* Visible keyboard focus — color-only selection states were the only affordance before. */
+.studyo-root :is(button, a, input, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid #D49A5A;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Don't show the ring on mouse click, only keyboard (focus-visible already handles this,
+   this is a belt-and-suspenders reset for older engines). */
+.studyo-root :is(button, a):focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Respect reduced-motion for the toast / preview animations. */
+@media (prefers-reduced-motion: reduce) {
+  .studyo-root * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Responsive safety net for the configure "kind" grid (review #6). The inline
+   grid uses auto-fit minmax already; this just tightens gaps on narrow viewports. */
+@media (max-width: 720px) {
+  .studyo-root .sy-kind-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
