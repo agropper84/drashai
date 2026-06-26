@@ -5131,40 +5131,59 @@ button.spine-dot:hover { transform: scale(1.25); }
   border-color: #2e3540 !important;
 }
 
-/* Instruction card */
-.sy-instr-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 14px;
+/* Instruction pills */
+.sy-instr-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #1e232b;
+  transition: background 120ms;
 }
-.sy-instr-card {
-  background: #1B1F27; border: 1px solid #242932;
-  border-radius: 14px; padding: 18px;
-  display: flex; flex-direction: column;
+.sy-instr-pill:last-child { border-bottom: none; }
+.sy-instr-pill:hover { background: #1e232b; }
+.sy-instr-pill-avatars {
+  display: flex; flex: none;
 }
-.sy-instr-name { font-size: 16px; font-weight: 700; }
-.sy-instr-badge {
-  font-size: 10.5px; letter-spacing: .08em;
-  text-transform: uppercase; font-weight: 700;
-  color: #D49A5A; border: 1px solid #4a3d28;
-  border-radius: 6px; padding: 3px 8px;
+.sy-instr-pill-av {
+  width: 22px; height: 22px; border-radius: 50%;
+  color: #15181E; display: flex; align-items: center;
+  justify-content: center; font-size: 8px; font-weight: 700;
+  border: 2px solid #1B1F27;
 }
-.sy-instr-note {
-  font-size: 13px; color: #aab0bd; line-height: 1.5;
-  margin-bottom: 16px; min-height: 40px;
+.sy-instr-pill-av2 { margin-left: -6px; }
+.sy-instr-pill-info {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 8px;
 }
-.sy-instr-use {
-  flex: 1; text-align: center;
-  background: #D49A5A; color: #15181E;
-  border-radius: 9px; padding: 9px;
-  font-size: 13px; font-weight: 700;
-  cursor: pointer; border: none; font-family: inherit;
+.sy-instr-pill-name {
+  font-size: 13px; font-weight: 600; color: #E4E6EA;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.sy-instr-edit {
-  flex: none; border: 1px solid #2e3540;
-  border-radius: 9px; padding: 9px 14px;
-  font-size: 13px; font-weight: 600; color: #aab0bd;
-  cursor: pointer; background: none; font-family: inherit;
+.sy-instr-pill-tag {
+  font-size: 9px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: #D49A5A;
+  background: #221d14; border: 1px solid #3a3122;
+  border-radius: 4px; padding: 2px 6px;
+  flex: none;
 }
+.sy-instr-pill-actions {
+  display: flex; align-items: center; gap: 4px;
+  flex: none; opacity: 0;
+  transition: opacity 120ms;
+}
+.sy-instr-pill:hover .sy-instr-pill-actions { opacity: 1; }
+.sy-instr-pill-use {
+  font-size: 11px; font-weight: 700; color: #D49A5A;
+  text-decoration: none; padding: 3px 8px;
+  border-radius: 6px; transition: background 120ms;
+}
+.sy-instr-pill-use:hover { background: #221d14; }
+.sy-instr-pill-edit {
+  background: none; border: none; color: #4a5260;
+  cursor: pointer; padding: 3px; border-radius: 4px;
+  display: flex; align-items: center;
+  transition: color 120ms;
+}
+.sy-instr-pill-edit:hover { color: #aab0bd; }
 
 /* Output card */
 .sy-output-grid {

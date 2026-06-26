@@ -323,43 +323,47 @@ export default function ProjectDetailPage() {
       {/* Section B: Output Instructions */}
       <div className="sy-section-head">
         <div className="sy-eyebrow">Output instructions</div>
-        <button className="sy-section-action" onClick={() => { setEditingInstr(null); setShowInstrModal(true); }}>+ Create instruction</button>
+        <div style={{ fontSize: 11, color: '#6d7383' }}>{project.instructions.length} recipe{project.instructions.length !== 1 ? 's' : ''}</div>
       </div>
 
-      {project.instructions.length === 0 ? (
-        <div className="sy-empty-card" style={{ marginBottom: 30 }} onClick={() => { setEditingInstr(null); setShowInstrModal(true); }}>
-          Save a reusable recipe — format, length, voices, and how you want it taught.
-        </div>
-      ) : (
-        <div className="sy-instr-grid" style={{ marginBottom: 30 }}>
-          {project.instructions.map(i => {
-            const va = getVoice(i.voiceA);
-            const vb = i.voiceB ? getVoice(i.voiceB) : null;
-            const voiceLabel = vb ? `${va?.name} & ${vb.name}` : va?.name || 'Unknown';
-            return (
-              <div key={i.id} className="sy-instr-card">
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <div className="sy-instr-name">{i.name}</div>
-                  <span className="sy-instr-badge">{i.format}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
-                  <div className="sy-avatar-stack" style={{ paddingLeft: 2 }}>
-                    {va && <div className="sy-avatar-stack-item" style={{ background: va.color, marginLeft: 0 }}>{va.initials}</div>}
-                    {vb && <div className="sy-avatar-stack-item" style={{ background: vb.color }}>{vb.initials}</div>}
+      <div className="sy-ref-panel" style={{ marginBottom: 30 }}>
+        {project.instructions.length > 0 && (
+          <div className="sy-ref-pills">
+            {project.instructions.map(i => {
+              const va = getVoice(i.voiceA);
+              const vb = i.voiceB ? getVoice(i.voiceB) : null;
+              return (
+                <div key={i.id} className="sy-instr-pill">
+                  <div className="sy-instr-pill-avatars">
+                    {va && <div className="sy-instr-pill-av" style={{ background: va.color }}>{va.initials}</div>}
+                    {vb && <div className="sy-instr-pill-av sy-instr-pill-av2" style={{ background: vb.color }}>{vb.initials}</div>}
                   </div>
-                  <div style={{ fontSize: 12.5, color: '#8b91a0' }}>{voiceLabel} · {LENGTH_LABELS[i.length] || i.length}</div>
+                  <div className="sy-instr-pill-info">
+                    <span className="sy-instr-pill-name">{i.name}</span>
+                    <span className="sy-instr-pill-tag">{i.format}</span>
+                  </div>
+                  <div className="sy-instr-pill-actions">
+                    <Link href={`/studyo/projects/${id}/configure?instr=${i.id}`} className="sy-instr-pill-use" title="Use this instruction">Use</Link>
+                    <button className="sy-instr-pill-edit" onClick={() => { setEditingInstr(i); setShowInstrModal(true); }} title="Edit">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button className="sy-ref-pill-x" onClick={() => deleteInstruction(i.id)} title="Delete">×</button>
+                  </div>
                 </div>
-                <div className="sy-instr-note">{i.note || 'No custom instructions'}</div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-                  <Link href={`/studyo/projects/${id}/configure?instr=${i.id}`} className="sy-instr-use" style={{ textDecoration: 'none' }}>Use →</Link>
-                  <button className="sy-instr-edit" onClick={() => { setEditingInstr(i); setShowInstrModal(true); }}>Edit</button>
-                  <button className="sy-instr-edit" style={{ color: '#C97D7D', padding: '9px 10px' }} onClick={() => deleteInstruction(i.id)} title="Delete">✕</button>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        )}
+        <div className="sy-ref-toolbar">
+          <button className="sy-ref-tool" onClick={() => { setEditingInstr(null); setShowInstrModal(true); }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New instruction
+          </button>
+          {project.instructions.length === 0 && (
+            <span className="sy-ref-hint">Format, length, voices, and teaching style</span>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Section C: Audio Files (Outputs) */}
       <div className="sy-section-head">
