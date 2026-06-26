@@ -5059,36 +5059,34 @@ button.spine-dot:hover { transform: scale(1.25); }
   border-color: #D49A5A;
   box-shadow: inset 0 0 0 1px #D49A5A20;
 }
-.sy-ref-item {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 14px;
+.sy-ref-pills {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 10px 12px;
   border-bottom: 1px solid #1e232b;
-  transition: background 120ms;
 }
-.sy-ref-item:hover { background: #1e232b; }
-.sy-ref-badge {
-  width: 28px; height: 28px; border-radius: 7px;
-  color: #15181E; display: flex; align-items: center;
-  justify-content: center; font-size: 8px; font-weight: 800;
-  letter-spacing: .03em; flex: none;
+.sy-ref-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #15181E; border: 1px solid #2e3540;
+  border-radius: 20px; padding: 5px 8px 5px 10px;
+  font-size: 12px; font-weight: 500; color: #aab0bd;
+  max-width: 200px;
+  transition: border-color 120ms;
 }
-.sy-ref-info { flex: 1; min-width: 0; }
-.sy-ref-name {
-  font-size: 13px; font-weight: 600; color: #E4E6EA;
+.sy-ref-pill:hover { border-color: #4a5260; }
+.sy-ref-pill-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  flex: none;
+}
+.sy-ref-pill-name {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  line-height: 1.3;
 }
-.sy-ref-meta {
-  font-size: 11px; color: #6d7383; line-height: 1.3;
+.sy-ref-pill-x {
+  background: none; border: none; color: #4a5260;
+  font-size: 14px; cursor: pointer; padding: 0 2px;
+  line-height: 1; transition: color 120ms;
+  flex: none;
 }
-.sy-ref-remove {
-  background: none; border: none; color: #3a414e;
-  cursor: pointer; padding: 4px; border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
-  opacity: 0; transition: opacity 120ms, color 120ms;
-}
-.sy-ref-item:hover .sy-ref-remove { opacity: 1; }
-.sy-ref-remove:hover { color: #C97D7D; background: #C97D7D12; }
+.sy-ref-pill-x:hover { color: #C97D7D; }
 
 /* Add toolbar (bottom of panel) */
 .sy-ref-toolbar {

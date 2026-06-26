@@ -260,21 +260,18 @@ export default function ProjectDetailPage() {
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
-        {/* Material items */}
-        {project.material.map(m => (
-          <div key={m.id} className="sy-ref-item">
-            <div className="sy-ref-badge" style={{ background: BADGE_COLORS[m.type] || '#8b91a0' }}>
-              {BADGE_LABELS[m.type]}
-            </div>
-            <div className="sy-ref-info">
-              <div className="sy-ref-name">{m.title}</div>
-              <div className="sy-ref-meta">{m.meta}</div>
-            </div>
-            <button className="sy-ref-remove" onClick={() => removeMaterial(m.id)} title="Remove">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
+        {/* Material pills */}
+        {project.material.length > 0 && (
+          <div className="sy-ref-pills">
+            {project.material.map(m => (
+              <div key={m.id} className="sy-ref-pill">
+                <span className="sy-ref-pill-dot" style={{ background: BADGE_COLORS[m.type] || '#8b91a0' }} />
+                <span className="sy-ref-pill-name">{m.title}</span>
+                <button className="sy-ref-pill-x" onClick={() => removeMaterial(m.id)} title="Remove">×</button>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
 
         {sizeError && (
           <div style={{ color: '#C97D7D', fontSize: 12, padding: '6px 14px' }}>{sizeError}</div>
