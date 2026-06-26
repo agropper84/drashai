@@ -26,6 +26,10 @@ export default function ProjectDetailPage() {
   const router = useRouter();
   const [project, setProject] = useState<StudyoProject | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [descDraft, setDescDraft] = useState('');
 
   useEffect(() => {
     studyoApi.projects.get(id).then(({ project }) => {
@@ -45,6 +49,20 @@ export default function ProjectDetailPage() {
     setProject(p);
   };
 
+  const saveTitle = async () => {
+    if (!titleDraft.trim() || titleDraft.trim() === project.title) { setEditingTitle(false); return; }
+    const { project: p } = await studyoApi.projects.update(id, { title: titleDraft.trim() });
+    setProject(p);
+    setEditingTitle(false);
+  };
+
+  const saveDesc = async () => {
+    if (descDraft.trim() === (project.desc || '')) { setEditingDesc(false); return; }
+    const { project: p } = await studyoApi.projects.update(id, { desc: descDraft.trim() });
+    setProject(p);
+    setEditingDesc(false);
+  };
+
   return (
     <>
       <button
@@ -57,9 +75,53 @@ export default function ProjectDetailPage() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 30 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
           <div className="sy-project-tile" style={{ width: 52, height: 52, borderRadius: 14, background: project.color, fontSize: 23 }}>{initial}</div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-.02em' }}>{project.title}</div>
-            <div style={{ fontSize: 13.5, color: '#8b91a0', marginTop: 3 }}>{project.desc || 'No description'}</div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            {editingTitle ? (
+              <input
+                autoFocus
+                value={titleDraft}
+                onChange={e => setTitleDraft(e.target.value)}
+                onBlur={saveTitle}
+                onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditingTitle(false); }}
+                style={{
+                  fontSize: 26, fontWeight: 700, letterSpacing: '-.02em',
+                  background: 'transparent', border: 'none', borderBottom: '2px solid #D49A5A',
+                  color: '#E4E6EA', outline: 'none', width: '100%', fontFamily: 'inherit',
+                  padding: '0 0 2px',
+                }}
+              />
+            ) : (
+              <div
+                onClick={() => { setTitleDraft(project.title); setEditingTitle(true); }}
+                style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-.02em', cursor: 'text' }}
+                title="Click to edit title"
+              >
+                {project.title}
+              </div>
+            )}
+            {editingDesc ? (
+              <input
+                autoFocus
+                value={descDraft}
+                onChange={e => setDescDraft(e.target.value)}
+                onBlur={saveDesc}
+                onKeyDown={e => { if (e.key === 'Enter') saveDesc(); if (e.key === 'Escape') setEditingDesc(false); }}
+                placeholder="Add a description..."
+                style={{
+                  fontSize: 13.5, color: '#aab0bd', marginTop: 3,
+                  background: 'transparent', border: 'none', borderBottom: '1px solid #3a414e',
+                  outline: 'none', width: '100%', fontFamily: 'inherit', padding: '0 0 2px',
+                }}
+              />
+            ) : (
+              <div
+                onClick={() => { setDescDraft(project.desc || ''); setEditingDesc(true); }}
+                style={{ fontSize: 13.5, color: '#8b91a0', marginTop: 3, cursor: 'text' }}
+                title="Click to edit description"
+              >
+                {project.desc || 'Add a description...'}
+              </div>
+            )}
           </div>
         </div>
         <Link
