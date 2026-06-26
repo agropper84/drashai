@@ -114,10 +114,15 @@ export default function ConfigurePage() {
   summaryParts.push(`${selMat.size} source${selMat.size !== 1 ? 's' : ''}`);
 
   const handleGenerate = () => {
-    // TODO: Wire to generation API (see API_INTEGRATION.md). Passes:
-    // { kind, format, length, voiceA, voiceB, notesStyle, qCount, customFormat,
-    //   materialIds: [...selMat], note: configNote }
-    router.push(`/studyo/projects/${id}/generating`);
+    const params = new URLSearchParams({
+      kind, format, length,
+      voiceA, voiceB,
+      matIds: [...selMat].join(','),
+      note: configNote,
+      notesStyle, qCount, customFormat,
+    });
+    // Route to review page — script is generated first, user reviews before audio
+    router.push(`/studyo/projects/${id}/review?${params.toString()}`);
   };
 
   const toggleMat = (matId: string) => {

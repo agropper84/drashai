@@ -5384,6 +5384,55 @@ button.spine-dot:hover { transform: scale(1.25); }
   border-color: #D49A5A; background: #221d14;
 }
 
+/* Script review */
+.sy-script-lines {
+  display: flex; flex-direction: column; gap: 2px;
+  background: #1B1F27; border: 1px solid #242932;
+  border-radius: 14px; overflow: hidden;
+}
+.sy-script-line {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px;
+  transition: background 120ms;
+}
+.sy-script-line:hover { background: #1e232b; }
+.sy-script-speaker {
+  width: 28px; height: 28px; border-radius: 50%;
+  color: #15181E; display: flex; align-items: center;
+  justify-content: center; font-size: 9px; font-weight: 800;
+  flex: none; cursor: pointer; border: none;
+  transition: transform 120ms;
+}
+.sy-script-speaker:hover { transform: scale(1.1); }
+.sy-script-text-wrap { flex: 1; min-width: 0; }
+.sy-script-text {
+  font-size: 14px; color: #E4E6EA; line-height: 1.55;
+  cursor: text;
+}
+.sy-script-text:hover { color: #fff; }
+.sy-script-actions {
+  display: flex; gap: 2px; flex: none;
+  opacity: 0; transition: opacity 120ms;
+}
+.sy-script-line:hover .sy-script-actions { opacity: 1; }
+.sy-script-action {
+  background: none; border: none; color: #4a5260;
+  cursor: pointer; padding: 3px; border-radius: 4px;
+  font-size: 12px; display: flex; align-items: center;
+  justify-content: center; transition: color 120ms;
+  font-family: inherit;
+}
+.sy-script-action:hover { color: #aab0bd; }
+.sy-script-action.delete:hover { color: #C97D7D; }
+.sy-script-action:disabled { opacity: 0.2; cursor: default; }
+
+/* Revision bar */
+.sy-revision-bar {
+  background: #1B1F27; border: 1px solid #242932;
+  border-radius: 14px; padding: 16px;
+  margin-bottom: 30px;
+}
+
 /* Project memory */
 .sy-memory-item {
   display: flex; align-items: flex-start; gap: 10px;
