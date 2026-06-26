@@ -5075,6 +5075,29 @@ button.spine-dot:hover { transform: scale(1.25); }
 }
 .sy-material-remove:hover { color: #aab0bd; }
 
+/* Inline material add */
+.sy-material-add {
+  border: 1.5px dashed #2e3540; border-radius: 12px;
+  background: #1B1F27;
+  transition: border-color 160ms, background 160ms;
+}
+.sy-material-add.drag-over {
+  border-color: #D49A5A; background: #221d14;
+}
+.sy-material-add-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: none; border: none; color: #8b91a0;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  font-family: inherit; padding: 6px 10px; border-radius: 8px;
+  transition: color 120ms, background 120ms;
+}
+.sy-material-add-btn:hover { color: #D49A5A; background: #221d14; }
+.sy-material-add-btn svg { flex: none; }
+.sy-input-dark {
+  background: #15181E !important;
+  border-color: #2e3540 !important;
+}
+
 /* Instruction card */
 .sy-instr-grid {
   display: grid; grid-template-columns: 1fr 1fr;

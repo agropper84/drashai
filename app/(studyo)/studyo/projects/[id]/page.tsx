@@ -1,7 +1,7 @@
 'use client';
 // Screen 2: Project detail — three sections: material, instructions, outputs.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { studyoApi } from '@/app/(studyo)/_lib/studyo-api';
@@ -35,6 +35,15 @@ export default function ProjectDetailPage() {
   const [editingInstr, setEditingInstr] = useState<StudyoInstruction | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Inline material add
+  const [addMode, setAddMode] = useState<'none' | 'paste' | 'link'>('none');
+  const [addText, setAddText] = useState('');
+  const [addTitle, setAddTitle] = useState('');
+  const [addUrl, setAddUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     studyoApi.projects.get(id).then(({ project }) => {
       setProject(project);
@@ -65,6 +74,45 @@ export default function ProjectDetailPage() {
     const { project: p } = await studyoApi.projects.update(id, { desc: descDraft.trim() });
     setProject(p);
     setEditingDesc(false);
+  };
+
+  const handleFileUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const isMedia = /\.(mp3|wav|m4a|mp4|mov|webm|ogg)$/i.test(file.name);
+      const { project: p } = await studyoApi.materials.addFile(id, file, isMedia ? 'media' : 'pdf');
+      setProject(p);
+    } catch { /* silent */ }
+    setUploading(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files[0];
+    if (f) handleFileUpload(f);
+  };
+
+  const handlePasteAdd = async () => {
+    if (!addText.trim()) return;
+    setUploading(true);
+    try {
+      const { project: p } = await studyoApi.materials.addText(id, addText, addTitle.trim() || undefined);
+      setProject(p);
+      setAddText(''); setAddTitle(''); setAddMode('none');
+    } catch { /* silent */ }
+    setUploading(false);
+  };
+
+  const handleLinkAdd = async () => {
+    if (!addUrl.trim()) return;
+    setUploading(true);
+    try {
+      const { project: p } = await studyoApi.materials.addLink(id, addUrl.trim(), addTitle.trim() || undefined);
+      setProject(p);
+      setAddUrl(''); setAddTitle(''); setAddMode('none');
+    } catch { /* silent */ }
+    setUploading(false);
   };
 
   const saveInstruction = async (instr: StudyoInstruction) => {
@@ -175,17 +223,19 @@ export default function ProjectDetailPage() {
       {/* Section A: Reference Material */}
       <div className="sy-section-head">
         <div className="sy-eyebrow">Reference material</div>
-        <Link href={`/studyo/projects/${id}/import`} className="sy-section-action" style={{ textDecoration: 'none' }}>
-          + Add material
-        </Link>
       </div>
 
-      {project.material.length === 0 ? (
-        <Link href={`/studyo/projects/${id}/import`} className="sy-empty-card" style={{ display: 'block', textDecoration: 'none', marginBottom: 30 }}>
-          Drop a PDF, paste text, or add a link to build this project's library.
-        </Link>
-      ) : (
-        <div className="sy-material-list" style={{ marginBottom: 30 }}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.epub,.doc,.docx,.txt,audio/*,video/*,.mp3,.wav,.m4a,.mp4,.mov,.webm"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = ''; }}
+        style={{ display: 'none' }}
+      />
+
+      {/* Material list */}
+      {project.material.length > 0 && (
+        <div className="sy-material-list" style={{ marginBottom: 12 }}>
           {project.material.map(m => (
             <div key={m.id} className="sy-material-row">
               <div className="sy-material-badge" style={{ background: BADGE_COLORS[m.type] || '#8b91a0' }}>
@@ -200,6 +250,85 @@ export default function ProjectDetailPage() {
           ))}
         </div>
       )}
+
+      {/* Inline add area */}
+      <div
+        className={`sy-material-add${dragOver ? ' drag-over' : ''}`}
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+      >
+        {uploading ? (
+          <div style={{ textAlign: 'center', padding: 20, color: '#8b91a0', fontSize: 13 }}>
+            Adding material...
+          </div>
+        ) : addMode === 'paste' ? (
+          <div style={{ padding: 16 }}>
+            <input
+              className="sy-input sy-input-dark"
+              value={addTitle}
+              onChange={e => setAddTitle(e.target.value)}
+              placeholder="Title (optional)"
+              style={{ marginBottom: 8, fontSize: 13 }}
+            />
+            <textarea
+              className="sy-textarea sy-input-dark"
+              value={addText}
+              onChange={e => setAddText(e.target.value)}
+              placeholder="Paste your chapter, paper, article, or notes..."
+              rows={5}
+              autoFocus
+              style={{ fontSize: 14 }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'flex-end' }}>
+              <button className="sy-btn-outline" style={{ padding: '7px 14px', fontSize: 12 }} onClick={() => { setAddMode('none'); setAddText(''); setAddTitle(''); }}>Cancel</button>
+              <button className="sy-btn-primary" style={{ padding: '7px 14px', fontSize: 12 }} onClick={handlePasteAdd} disabled={!addText.trim()}>Add</button>
+            </div>
+          </div>
+        ) : addMode === 'link' ? (
+          <div style={{ padding: 16 }}>
+            <input
+              className="sy-input sy-input-dark"
+              value={addTitle}
+              onChange={e => setAddTitle(e.target.value)}
+              placeholder="Title (optional)"
+              style={{ marginBottom: 8, fontSize: 13 }}
+            />
+            <input
+              className="sy-input sy-input-dark"
+              value={addUrl}
+              onChange={e => setAddUrl(e.target.value)}
+              placeholder="https://arxiv.org/abs/1706.03762"
+              autoFocus
+              onKeyDown={e => { if (e.key === 'Enter') handleLinkAdd(); }}
+              style={{ fontSize: 14 }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'flex-end' }}>
+              <button className="sy-btn-outline" style={{ padding: '7px 14px', fontSize: 12 }} onClick={() => { setAddMode('none'); setAddUrl(''); setAddTitle(''); }}>Cancel</button>
+              <button className="sy-btn-primary" style={{ padding: '7px 14px', fontSize: 12 }} onClick={handleLinkAdd} disabled={!addUrl.trim()}>Add</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '14px 18px', flexWrap: 'wrap' }}>
+            <button className="sy-material-add-btn" onClick={() => fileInputRef.current?.click()}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V5M8 9l4-4 4 4M5 19h14"/></svg>
+              Upload file
+            </button>
+            <span style={{ color: '#3a414e', fontSize: 12 }}>|</span>
+            <button className="sy-material-add-btn" onClick={() => setAddMode('paste')}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 10h16M4 14h10"/></svg>
+              Paste text
+            </button>
+            <span style={{ color: '#3a414e', fontSize: 12 }}>|</span>
+            <button className="sy-material-add-btn" onClick={() => setAddMode('link')}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              Add link
+            </button>
+            <span style={{ color: '#3a414e', fontSize: 11, marginLeft: 4 }}>or drop a file here</span>
+          </div>
+        )}
+      </div>
+      <div style={{ marginBottom: 30 }} />
 
       {/* Section B: Output Instructions */}
       <div className="sy-section-head">
