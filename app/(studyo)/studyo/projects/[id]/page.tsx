@@ -243,6 +243,7 @@ export default function ProjectDetailPage() {
       {/* Section A: Reference Material */}
       <div className="sy-section-head">
         <div className="sy-eyebrow">Reference material</div>
+        <div style={{ fontSize: 11, color: '#6d7383' }}>{project.material.length} source{project.material.length !== 1 ? 's' : ''}</div>
       </div>
 
       <input
@@ -253,104 +254,70 @@ export default function ProjectDetailPage() {
         style={{ display: 'none' }}
       />
 
-      {/* Material tiles */}
-      {project.material.length > 0 && (
-        <div className="sy-material-tiles" style={{ marginBottom: 12 }}>
-          {project.material.map(m => (
-            <div key={m.id} className="sy-material-tile">
-              <button
-                className="sy-material-tile-remove"
-                onClick={() => removeMaterial(m.id)}
-                title="Remove"
-              >✕</button>
-              <div className="sy-material-tile-icon" style={{ background: BADGE_COLORS[m.type] || '#8b91a0' }}>
-                {BADGE_LABELS[m.type]}
-              </div>
-              <div className="sy-material-tile-title">{m.title}</div>
-              <div className="sy-material-tile-meta">{m.meta}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {sizeError && (
-        <div style={{ color: '#C97D7D', fontSize: 12, marginBottom: 8, padding: '0 4px' }}>{sizeError}</div>
-      )}
-
-      {/* Inline add area */}
       <div
-        className={`sy-material-add${dragOver ? ' drag-over' : ''}`}
+        className={`sy-ref-panel${dragOver ? ' drag-over' : ''}`}
         onDragOver={e => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
-        {uploading ? (
-          <div style={{ textAlign: 'center', padding: 20, color: '#8b91a0', fontSize: 13 }}>
-            Adding material...
+        {/* Material items */}
+        {project.material.map(m => (
+          <div key={m.id} className="sy-ref-item">
+            <div className="sy-ref-badge" style={{ background: BADGE_COLORS[m.type] || '#8b91a0' }}>
+              {BADGE_LABELS[m.type]}
+            </div>
+            <div className="sy-ref-info">
+              <div className="sy-ref-name">{m.title}</div>
+              <div className="sy-ref-meta">{m.meta}</div>
+            </div>
+            <button className="sy-ref-remove" onClick={() => removeMaterial(m.id)} title="Remove">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
+        ))}
+
+        {sizeError && (
+          <div style={{ color: '#C97D7D', fontSize: 12, padding: '6px 14px' }}>{sizeError}</div>
+        )}
+
+        {/* Add controls */}
+        {uploading ? (
+          <div className="sy-ref-adding">Adding...</div>
         ) : addMode === 'paste' ? (
-          <div style={{ padding: 16 }}>
-            <input
-              className="sy-input sy-input-dark"
-              value={addTitle}
-              onChange={e => setAddTitle(e.target.value)}
-              placeholder="Title (optional)"
-              style={{ marginBottom: 8, fontSize: 13 }}
-            />
-            <textarea
-              className="sy-textarea sy-input-dark"
-              value={addText}
-              onChange={e => setAddText(e.target.value)}
-              placeholder="Paste your chapter, paper, article, or notes..."
-              rows={5}
-              autoFocus
-              style={{ fontSize: 14 }}
-            />
-            <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'flex-end' }}>
-              <button className="sy-btn-outline" style={{ padding: '7px 14px', fontSize: 12 }} onClick={() => { setAddMode('none'); setAddText(''); setAddTitle(''); }}>Cancel</button>
-              <button className="sy-btn-primary" style={{ padding: '7px 14px', fontSize: 12 }} onClick={handlePasteAdd} disabled={!addText.trim()}>Add</button>
+          <div className="sy-ref-input-area">
+            <input className="sy-input sy-input-dark" value={addTitle} onChange={e => setAddTitle(e.target.value)} placeholder="Title (optional)" style={{ fontSize: 13 }} />
+            <textarea className="sy-textarea sy-input-dark" value={addText} onChange={e => setAddText(e.target.value)} placeholder="Paste your text here..." rows={4} autoFocus style={{ fontSize: 14, marginTop: 6 }} />
+            <div className="sy-ref-input-actions">
+              <button className="sy-ref-cancel" onClick={() => { setAddMode('none'); setAddText(''); setAddTitle(''); }}>Cancel</button>
+              <button className="sy-btn-primary" style={{ padding: '6px 16px', fontSize: 12 }} onClick={handlePasteAdd} disabled={!addText.trim()}>Add</button>
             </div>
           </div>
         ) : addMode === 'link' ? (
-          <div style={{ padding: 16 }}>
-            <input
-              className="sy-input sy-input-dark"
-              value={addTitle}
-              onChange={e => setAddTitle(e.target.value)}
-              placeholder="Title (optional)"
-              style={{ marginBottom: 8, fontSize: 13 }}
-            />
-            <input
-              className="sy-input sy-input-dark"
-              value={addUrl}
-              onChange={e => setAddUrl(e.target.value)}
-              placeholder="https://arxiv.org/abs/1706.03762"
-              autoFocus
-              onKeyDown={e => { if (e.key === 'Enter') handleLinkAdd(); }}
-              style={{ fontSize: 14 }}
-            />
-            <div style={{ display: 'flex', gap: 8, marginTop: 10, justifyContent: 'flex-end' }}>
-              <button className="sy-btn-outline" style={{ padding: '7px 14px', fontSize: 12 }} onClick={() => { setAddMode('none'); setAddUrl(''); setAddTitle(''); }}>Cancel</button>
-              <button className="sy-btn-primary" style={{ padding: '7px 14px', fontSize: 12 }} onClick={handleLinkAdd} disabled={!addUrl.trim()}>Add</button>
+          <div className="sy-ref-input-area">
+            <input className="sy-input sy-input-dark" value={addTitle} onChange={e => setAddTitle(e.target.value)} placeholder="Title (optional)" style={{ fontSize: 13 }} />
+            <input className="sy-input sy-input-dark" value={addUrl} onChange={e => setAddUrl(e.target.value)} placeholder="https://..." autoFocus onKeyDown={e => { if (e.key === 'Enter') handleLinkAdd(); }} style={{ fontSize: 14, marginTop: 6 }} />
+            <div className="sy-ref-input-actions">
+              <button className="sy-ref-cancel" onClick={() => { setAddMode('none'); setAddUrl(''); setAddTitle(''); }}>Cancel</button>
+              <button className="sy-btn-primary" style={{ padding: '6px 16px', fontSize: 12 }} onClick={handleLinkAdd} disabled={!addUrl.trim()}>Add</button>
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '14px 18px', flexWrap: 'wrap' }}>
-            <button className="sy-material-add-btn" onClick={() => fileInputRef.current?.click()}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V5M8 9l4-4 4 4M5 19h14"/></svg>
-              Upload file
+          <div className="sy-ref-toolbar">
+            <button className="sy-ref-tool" onClick={() => fileInputRef.current?.click()}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Upload
             </button>
-            <span style={{ color: '#3a414e', fontSize: 12 }}>|</span>
-            <button className="sy-material-add-btn" onClick={() => setAddMode('paste')}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 10h16M4 14h10"/></svg>
-              Paste text
+            <button className="sy-ref-tool" onClick={() => setAddMode('paste')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+              Paste
             </button>
-            <span style={{ color: '#3a414e', fontSize: 12 }}>|</span>
-            <button className="sy-material-add-btn" onClick={() => setAddMode('link')}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-              Add link
+            <button className="sy-ref-tool" onClick={() => setAddMode('link')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+              Link
             </button>
-            <span style={{ color: '#3a414e', fontSize: 11, marginLeft: 4 }}>or drop a file here</span>
+            {project.material.length === 0 && (
+              <span className="sy-ref-hint">Drop files here or choose an option</span>
+            )}
           </div>
         )}
       </div>
