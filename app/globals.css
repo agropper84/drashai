@@ -5384,6 +5384,22 @@ button.spine-dot:hover { transform: scale(1.25); }
   border-color: #D49A5A; background: #221d14;
 }
 
+/* Extra instructions (collapsible) */
+.sy-extra-instructions {
+  margin-top: 20px; margin-bottom: 4px;
+}
+.sy-extra-instructions-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500; color: #6d7383;
+  cursor: pointer; list-style: none; padding: 6px 0;
+  user-select: none;
+}
+.sy-extra-instructions-toggle::-webkit-details-marker { display: none; }
+.sy-extra-instructions-toggle:hover { color: #aab0bd; }
+.sy-extra-instructions-toggle:hover svg { stroke: #aab0bd; }
+.sy-extra-chevron { transition: transform 160ms; flex: none; }
+.sy-extra-instructions[open] .sy-extra-chevron { transform: rotate(180deg); }
+
 /* Summary bar */
 .sy-summary-bar {
   background: #1B1F27; border: 1px solid #242932;

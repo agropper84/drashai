@@ -316,6 +316,23 @@ export default function ConfigurePage() {
         </div>
       )}
 
+      {/* Additional instructions (all kinds) */}
+      <details className="sy-extra-instructions" open={!!configNote}>
+        <summary className="sy-extra-instructions-toggle">
+          <Icon name="edit" size={13} stroke="#6d7383" />
+          <span>{configNote ? 'Custom instructions' : 'Add custom instructions'}</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6d7383" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sy-extra-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <textarea
+          className="sy-textarea"
+          value={configNote}
+          onChange={e => setConfigNote(e.target.value)}
+          placeholder="e.g. Focus on intuition over math. Use analogies. Quiz me after each section. Keep it conversational..."
+          rows={3}
+          style={{ marginTop: 8 }}
+        />
+      </details>
+
       {/* 4) Summary bar */}
       <div className="sy-summary-bar">
         <div className="sy-summary-text">{summaryParts.join(' · ')}</div>
